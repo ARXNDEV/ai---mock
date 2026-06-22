@@ -25,7 +25,7 @@ export function Footer() {
           <h4>Company</h4>
           <a href="#about">About</a>
           <a href="#">Blog</a>
-          <a href="mailto:iarunrao01@gmail.com">Contact</a>
+          <Link href="/support">Contact</Link>
         </div>
       </div>
       <div className="copyright">

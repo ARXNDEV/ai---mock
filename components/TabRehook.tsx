@@ -12,11 +12,8 @@ import { useEffect } from 'react';
  * navigations keep restoring the right title.
  */
 const MESSAGES = ['👀 Your interview is waiting…', '💔 We miss you! Come back', '🎯 Don’t ghost your prep'];
-const SAD_FAVICON =
-  'data:image/svg+xml,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="0.9em" font-size="90">😢</text></svg>',
-  );
+// When the tab loses focus, flip the favicon from the arrow mark to the book mark.
+const AWAY_FAVICON = '/favicon-book.png';
 
 export default function TabRehook() {
   useEffect(() => {
@@ -37,7 +34,7 @@ export default function TabRehook() {
         savedTitle = document.title; // capture the real, current page title
         let i = 0;
         document.title = MESSAGES[0];
-        setFavicon(SAD_FAVICON);
+        setFavicon(AWAY_FAVICON);
         timer = setInterval(() => {
           i = (i + 1) % MESSAGES.length;
           document.title = MESSAGES[i];

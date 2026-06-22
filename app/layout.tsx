@@ -27,6 +27,7 @@ export const metadata: Metadata = {
   title: 'Intervue.ai — Ace your next interview with AI',
   description:
     'Practice with an intelligent AI interviewer, get instant feedback, and land your dream job with confidence.',
+  icons: { icon: '/favicon.png' },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

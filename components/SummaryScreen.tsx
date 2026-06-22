@@ -1,15 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import type { AnswerRecord } from '@/lib/types';
 
 function snippet(text: string, max = 80): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
 
-function overallColor(score: number): string {
-  if (score >= 8) return 'text-emerald-600';
-  if (score >= 5) return 'text-amber-600';
-  return 'text-red-600';
+function scoreClass(score: number): 'hi' | 'mid' {
+  return score >= 7 ? 'hi' : 'mid';
 }
 
 export default function SummaryScreen({
@@ -21,81 +20,101 @@ export default function SummaryScreen({
 }) {
   const scores = answers.map((a) => a.feedback.score);
   const overall = scores.length
-    ? Math.round((scores.reduce((sum, n) => sum + n, 0) / scores.length) * 10) / 10
+    ? Math.round((scores.reduce((s, n) => s + n, 0) / scores.length) * 10) / 10
     : 0;
 
   const byScoreDesc = [...answers].sort((a, b) => b.feedback.score - a.feedback.score);
   const byScoreAsc = [...answers].sort((a, b) => a.feedback.score - b.feedback.score);
-
-  // Strengths: what went well on the strongest answers.
   const strengths = byScoreDesc.slice(0, 3).map((a) => a.feedback.good).filter(Boolean);
-  // Top improvement tips: the gaps from the weakest answers.
   const tips = byScoreAsc.slice(0, 3).map((a) => a.feedback.missing).filter(Boolean);
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6">
-      <header className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight">Interview Complete</h1>
-        <p className="mt-2 text-slate-600">Here&apos;s how you did across {answers.length} questions.</p>
-      </header>
-
-      <div className="flex flex-col items-center rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-        <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Overall score</p>
-        <p className={`mt-2 text-6xl font-bold ${overallColor(overall)}`}>
-          {overall}
-          <span className="text-2xl font-normal text-slate-400">/10</span>
-        </p>
+    <div>
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div className="eyebrow" style={{ marginBottom: 12 }}>
+          Interview complete
+        </div>
+        <h1 className="serif" style={{ fontSize: 'clamp(34px,5vw,52px)', lineHeight: 1.02, letterSpacing: '-0.01em' }}>
+          Here&apos;s how you did.
+        </h1>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 className="mb-3 text-lg font-semibold text-emerald-700">Strengths</h2>
+      <div className="feature" style={{ alignItems: 'center', textAlign: 'center', marginBottom: 22 }}>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>
+          Overall score
+        </div>
+        <div className={`num s-score ${scoreClass(overall)}`} style={{ fontSize: 76, lineHeight: 1, marginTop: 8 }}>
+          {overall}
+          <span style={{ fontSize: 26, color: 'var(--ink-mute)' }}>/10</span>
+        </div>
+        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 8 }}>
+          {answers.length} question{answers.length === 1 ? '' : 's'} answered
+        </div>
+      </div>
+
+      <div className="feature" style={{ marginBottom: 22 }}>
+        <h3 style={{ color: 'var(--green)', marginBottom: 14 }}>Strengths</h3>
         {strengths.length ? (
-          <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: 10, listStyle: 'disc', paddingLeft: 18, color: 'var(--ink-soft)', fontSize: 14.5 }}>
             {strengths.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-slate-500">No clear strengths captured this round.</p>
+          <p style={{ color: 'var(--ink-mute)', fontSize: 14 }}>No clear strengths captured this round.</p>
         )}
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 className="mb-3 text-lg font-semibold text-red-700">Top 3 improvement tips</h2>
+      <div className="feature" style={{ marginBottom: 22 }}>
+        <h3 style={{ color: 'var(--ochre)', marginBottom: 14 }}>Top 3 improvement tips</h3>
         {tips.length ? (
-          <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700">
+          <ol style={{ display: 'flex', flexDirection: 'column', gap: 10, listStyle: 'decimal', paddingLeft: 18, color: 'var(--ink-soft)', fontSize: 14.5 }}>
             {tips.map((t, i) => (
               <li key={i}>{t}</li>
             ))}
           </ol>
         ) : (
-          <p className="text-sm text-slate-500">No major gaps identified — nicely done.</p>
+          <p style={{ color: 'var(--ink-mute)', fontSize: 14 }}>No major gaps identified — nicely done.</p>
         )}
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">Per-question breakdown</h2>
-        <ul className="space-y-3">
+      <div className="feature" style={{ marginBottom: 26 }}>
+        <h3 style={{ marginBottom: 14 }}>Per-question breakdown</h3>
+        <ul style={{ display: 'flex', flexDirection: 'column' }}>
           {answers.map((a, i) => (
-            <li key={i} className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-              <span className="text-sm text-slate-700">
-                <span className="font-medium text-slate-400">Q{i + 1}.</span> {snippet(a.question)}
+            <li
+              key={i}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                padding: '12px 0',
+                borderBottom: i === answers.length - 1 ? 'none' : '1px solid var(--line)',
+              }}
+            >
+              <span style={{ fontSize: 14, color: 'var(--ink-soft)' }}>
+                <span className="mono" style={{ color: 'var(--ink-mute)', marginRight: 6 }}>
+                  Q{i + 1}
+                </span>
+                {snippet(a.question)}
               </span>
-              <span className={`shrink-0 text-sm font-bold ${overallColor(a.feedback.score)}`}>
-                {a.feedback.score}/10
+              <span className={`num s-score ${scoreClass(a.feedback.score)}`} style={{ fontSize: 24 }}>
+                {a.feedback.score}
               </span>
             </li>
           ))}
         </ul>
       </div>
 
-      <button
-        type="button"
-        onClick={onRestart}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
-      >
-        Start New Interview
-      </button>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-accent" style={{ flex: 1 }} onClick={onRestart}>
+          Start New Interview
+        </button>
+        <Link href="/dashboard" className="btn btn-line" style={{ flex: 1 }}>
+          Back to Dashboard
+        </Link>
+      </div>
     </div>
   );
 }

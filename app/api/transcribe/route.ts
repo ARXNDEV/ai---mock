@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { toFile } from 'openai';
 import { getGroq, GROQ_WHISPER_MODEL } from '@/lib/groq';
+import { getUser } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 // Transcription of a short answer comfortably fits well under this ceiling.
@@ -8,6 +9,9 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
+    const user = await getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const formData = await request.formData();
     const audio = formData.get('audio');
 

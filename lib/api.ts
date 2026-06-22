@@ -46,3 +46,30 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
   }
   return (data as { transcript: string }).transcript;
 }
+
+/** Consume one interview credit (free plan) before starting. Returns ok:false at the limit. */
+export async function consumeInterviewCredit(): Promise<{
+  ok: boolean;
+  remaining: number | null;
+  plan: string;
+  error?: string;
+}> {
+  const res = await fetch('/api/interview/consume', { method: 'POST' });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 403) {
+    return { ok: false, remaining: data.remaining ?? 0, plan: data.plan ?? 'free', error: data.error };
+  }
+  if (!res.ok) {
+    throw new Error((data as { error?: string }).error || 'Could not start interview.');
+  }
+  return { ok: true, remaining: data.remaining ?? null, plan: data.plan ?? 'free' };
+}
+
+export async function saveSession(payload: {
+  role: string;
+  difficulty: string;
+  overall_score: number;
+  questions: unknown;
+}): Promise<void> {
+  await postJson('/api/sessions', payload);
+}

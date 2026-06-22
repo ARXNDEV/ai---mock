@@ -1,105 +1,133 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { InterviewConfig, Role, Difficulty } from '@/lib/types';
 import { ROLES, DIFFICULTIES } from '@/lib/constants';
+
+function optStyle(active: boolean): CSSProperties {
+  return {
+    fontFamily: 'var(--sans)',
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '11px 12px',
+    borderRadius: 9,
+    border: `1px solid ${active ? 'var(--accent)' : 'var(--line-strong)'}`,
+    background: active ? 'rgba(229,64,43,0.08)' : 'var(--card)',
+    color: active ? 'var(--accent-deep)' : 'var(--ink-soft)',
+    cursor: 'pointer',
+    transition: 'var(--t)',
+  };
+}
 
 export default function SetupScreen({
   onStart,
   loading,
   error,
+  remaining,
+  isPro,
+  initialRole = 'swe',
+  initialDifficulty = 'mid',
 }: {
   onStart: (config: InterviewConfig) => void;
   loading: boolean;
   error: string | null;
+  remaining: number | null;
+  isPro: boolean;
+  initialRole?: Role;
+  initialDifficulty?: Difficulty;
 }) {
-  const [role, setRole] = useState<Role>('swe');
-  const [difficulty, setDifficulty] = useState<Difficulty>('mid');
+  const [role, setRole] = useState<Role>(initialRole);
+  const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
   const [jd, setJd] = useState('');
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight">AI Mock Interview</h1>
-        <p className="mt-2 text-slate-600">
-          Practice with a strict but fair AI interviewer. Speak your answers and get instant,
-          honest feedback.
-        </p>
-      </header>
-
-      <div className="space-y-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <fieldset>
-          <legend className="mb-2 text-sm font-semibold text-slate-700">Role</legend>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {ROLES.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => setRole(r.value)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                  role === r.value
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend className="mb-2 text-sm font-semibold text-slate-700">Difficulty</legend>
-          <div className="grid grid-cols-3 gap-2">
-            {DIFFICULTIES.map((d) => (
-              <button
-                key={d.value}
-                type="button"
-                onClick={() => setDifficulty(d.value)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                  difficulty === d.value
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <div>
-          <label htmlFor="jd" className="mb-2 block text-sm font-semibold text-slate-700">
-            Job description <span className="font-normal text-slate-400">(optional)</span>
-          </label>
-          <textarea
-            id="jd"
-            value={jd}
-            onChange={(e) => setJd(e.target.value)}
-            rows={5}
-            placeholder="Paste the job description to tailor the questions…"
-            className="w-full resize-y rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-          />
+    <div className="auth-card" style={{ width: '100%', maxWidth: 560 }}>
+      <div style={{ marginBottom: 22 }}>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>
+          New interview
         </div>
-
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-        )}
-
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => onStart({ role, difficulty, jd })}
-          className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? 'Preparing your interview…' : 'Start Interview'}
-        </button>
+        <h1 className="serif" style={{ fontSize: 34, lineHeight: 1.05, letterSpacing: '-0.01em' }}>
+          Set up your mock interview
+        </h1>
+        <p style={{ color: 'var(--ink-soft)', fontSize: 14, marginTop: 8 }}>
+          {isPro
+            ? 'Unlimited interviews on Pro.'
+            : remaining != null
+              ? `${remaining} free interview${remaining === 1 ? '' : 's'} left this month.`
+              : ''}
+        </p>
       </div>
 
-      <p className="mt-4 text-center text-xs text-slate-400">
-        Microphone access is required. Use a Chromium-based browser on http://localhost for best
-        results.
-      </p>
+      <div style={{ marginBottom: 18 }}>
+        <div className="eyebrow" style={{ color: 'var(--ink-mute)', marginBottom: 10 }}>
+          Role
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+          {ROLES.map((r) => (
+            <button key={r.value} type="button" onClick={() => setRole(r.value)} style={optStyle(role === r.value)}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 18 }}>
+        <div className="eyebrow" style={{ color: 'var(--ink-mute)', marginBottom: 10 }}>
+          Difficulty
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d.value}
+              type="button"
+              onClick={() => setDifficulty(d.value)}
+              style={optStyle(difficulty === d.value)}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 18 }}>
+        <div className="eyebrow" style={{ color: 'var(--ink-mute)', marginBottom: 10 }}>
+          Job description (optional)
+        </div>
+        <textarea
+          value={jd}
+          onChange={(e) => setJd(e.target.value)}
+          rows={4}
+          placeholder="Paste the job description to tailor the questions…"
+          style={{
+            width: '100%',
+            resize: 'vertical',
+            border: '1px solid var(--line-strong)',
+            background: 'var(--card)',
+            borderRadius: 9,
+            padding: 12,
+            fontFamily: 'var(--sans)',
+            fontSize: 14,
+            color: 'var(--ink)',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      {error && (
+        <p className="mono" style={{ color: 'var(--accent)', fontSize: 13, marginBottom: 14 }}>
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        className="btn btn-accent"
+        style={{ width: '100%' }}
+        disabled={loading}
+        onClick={() => onStart({ role, difficulty, jd })}
+      >
+        {loading ? 'Preparing your interview…' : 'Start Interview →'}
+      </button>
     </div>
   );
 }

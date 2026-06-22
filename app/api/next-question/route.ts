@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getGroq, GROQ_LLM_MODEL, INTERVIEWER_SYSTEM_PROMPT } from '@/lib/groq';
 import { buildQuestionPrompt } from '@/lib/prompts';
 import { extractJson } from '@/lib/json';
+import { getUser } from '@/lib/auth';
 import type { Role, Difficulty } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -15,6 +16,9 @@ interface Body {
 
 export async function POST(request: Request) {
   try {
+    const user = await getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = (await request.json()) as Body;
 
     if (!body.role || !body.difficulty) {

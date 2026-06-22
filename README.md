@@ -1,99 +1,98 @@
-# AI Mock Interview (Phase 1 MVP)
+# AceInterview — AI Mock Interview SaaS
 
-A web app that runs a 5-question mock technical interview. An AI interviewer
-asks role-tailored questions, you answer by **speaking**, your audio is
-transcribed, and the model grades each answer with structured feedback. At the
-end you get a session summary.
+A production-style SaaS around an AI mock-interview engine. Users sign in, pick a
+role + difficulty, answer **out loud**, and get instant AI-scored feedback. Free
+users get 3 interviews/month; Pro unlocks unlimited interviews + full history.
 
 ## Tech stack
 
-- **Next.js 14** (App Router) + **TypeScript**
-- **Tailwind CSS**
-- **Groq API** (free tier) — one key powers both:
-  - `llama-3.3-70b-versatile` — question generation + answer evaluation
-  - `whisper-large-v3` — audio transcription
-- **MediaRecorder** (browser) for recording, **SpeechSynthesis** (browser) for optional TTS
+- **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS**
+- **Supabase** — auth (Google OAuth + email magic link) + Postgres (`@supabase/ssr`)
+- **Groq** (free tier, OpenAI-compatible) — `llama-3.3-70b-versatile` for interview
+  logic + `whisper-large-v3` for transcription
+- **Razorpay** (₹) and **Stripe** ($) — payments / Pro upgrades
+- **Framer Motion** animations · **Radix UI** (dialog, dropdown) · **lucide-react** icons
+- Glassmorphism dark theme, fully mobile responsive
 
-> Groq exposes an OpenAI-compatible API, so the app uses the `openai` SDK pointed
-> at Groq's base URL (see `lib/groq.ts`). To switch providers or models, change
-> the constants in that one file.
-
-## Getting started
+## Setup
 
 ```bash
-# 1. Install dependencies
+# 1. Install
 npm install
 
-# 2. Add your free Groq API key
-cp .env.local.example .env.local
-#   then edit .env.local and set:
-#   GROQ_API_KEY=...        (get one free at https://console.groq.com/keys)
+# 2. Configure env
+cp .env.local.example .env.local   # fill in Supabase, Groq, Razorpay, Stripe
 
-# 3. Run the dev server
-npm run dev
+# 3. Create the database
+#    Open the Supabase SQL editor and run the contents of supabase/schema.sql
+
+# 4. Enable auth providers in Supabase:
+#    Authentication → Providers → enable Google (set OAuth credentials)
+#    Authentication → URL config → add http://localhost:3000/auth/callback as a redirect URL
+
+# 5. Run
+npm run dev          # http://localhost:3000
 ```
 
-Open http://localhost:3000. The browser will ask for microphone permission the
-first time you record. (Mic access requires `localhost` or HTTPS.)
+### Stripe webhook (local)
 
-## Project structure
-
-```
-app/
-  layout.tsx              Root layout + global styles
-  page.tsx                Orchestrator — holds all session state (useState)
-  globals.css             Tailwind entrypoint
-  api/
-    transcribe/route.ts   POST audio blob  → Groq Whisper → { transcript }
-    evaluate/route.ts     POST answer      → Groq LLM → { score, good, missing, suggestion }
-    next-question/route.ts POST history    → Groq LLM → { question }
-components/
-  SetupScreen.tsx         Role / difficulty / JD + Start
-  InterviewScreen.tsx     Question + TTS, record → transcribe → review → evaluate
-  FeedbackPanel.tsx       Score, good, missing, collapsible suggestion, Next
-  SummaryScreen.tsx       Overall score, strengths, tips, per-question breakdown
-hooks/
-  useRecorder.ts          MediaRecorder wrapper
-lib/
-  types.ts                Shared types (client + server safe)
-  constants.ts            Roles, difficulties, MAX_QUESTIONS
-  groq.ts                 Groq (OpenAI-compatible) client, model ids, system prompt
-  prompts.ts              Prompt builders for question + evaluation
-  json.ts                 Robust JSON extraction from model output
-  api.ts                  Client-side fetch wrappers
+```bash
+stripe listen --forward-to localhost:3000/api/payment/stripe/webhook
+# copy the printed whsec_... into STRIPE_WEBHOOK_SECRET
 ```
 
-## API routes
+## Routes
 
-| Route                | Method | Request                                         | Response                                      |
-| -------------------- | ------ | ----------------------------------------------- | --------------------------------------------- |
-| `/api/transcribe`    | POST   | `multipart/form-data` with `audio` blob         | `{ transcript }`                              |
-| `/api/evaluate`      | POST   | `{ question, transcript, role, jd }`            | `{ score, good, missing, suggestion }`        |
-| `/api/next-question` | POST   | `{ role, difficulty, jd, previousQuestions[] }` | `{ question }`                                |
+| Path | Access | Purpose |
+| --- | --- | --- |
+| `/` | public | Landing (hero, features, pricing, testimonials) |
+| `/login`, `/signup` | public | Supabase auth (Google + magic link) |
+| `/pricing` | public | Full pricing, ₹/$ toggle, Razorpay/Stripe checkout, FAQ |
+| `/dashboard` | auth | Usage stats, recent sessions, upgrade banner |
+| `/interview` | auth + credits | The mock-interview engine (credit-gated) |
+| `/history` | auth (Pro) | All sessions, expandable feedback (locked for free) |
 
-## Notes & implementation decisions
+### API routes
 
-- **Provider:** Groq's free tier. Because it's OpenAI-API-compatible, both the LLM
-  (chat completions) and transcription use the `openai` SDK with a base-URL swap.
-  All model/provider config lives in `lib/groq.ts`.
-- **Structured JSON:** the LLM routes use Groq's JSON mode
-  (`response_format: { type: 'json_object' }`) and the server still parses
-  defensively (`lib/json.ts`) as a fallback.
-- **Free-tier caveats:** Groq rate-limits the free tier; under heavy use you may
-  see `429` errors surfaced in the UI. The interviewer system prompt is the one
-  from the spec.
-- **Session summary** is computed client-side from the per-answer feedback (no DB,
-  no extra API route). To make it LLM-synthesized, add a `/api/summary` route.
-- **State** lives entirely in React `useState` in `app/page.tsx`. No persistence.
-- **Audio format** is chosen from what the browser's MediaRecorder supports
-  (WebM/Opus on Chromium, MP4 on Safari); Whisper accepts both.
+| Path | Purpose |
+| --- | --- |
+| `POST /api/transcribe` | audio blob → Groq Whisper → `{ transcript }` (auth) |
+| `POST /api/evaluate` | answer → Groq LLM → `{ score, good, missing, suggestion }` (auth) |
+| `POST /api/next-question` | history → Groq LLM → `{ question }` (auth) |
+| `POST /api/interview/consume` | consume 1 free credit (or pass for Pro); 403 at limit |
+| `POST /api/sessions` | persist a completed interview |
+| `POST /api/payment/razorpay/create-order` · `/verify` | Razorpay order + signature verify → upgrade |
+| `POST /api/payment/stripe/create-checkout` · `/webhook` | Stripe checkout + webhook → upgrade |
 
-## Swapping providers
+## Architecture notes
 
-Everything provider-specific is in `lib/groq.ts`. To use a different
-OpenAI-compatible provider, change `GROQ_BASE_URL`, the model constants, and the
-env var name. The prompts (`lib/prompts.ts`) are provider-agnostic.
+- **Auth**: `middleware.ts` refreshes the Supabase session and protects
+  `/dashboard`, `/interview`, `/history`. The `(app)` route group adds a shared
+  nav + a second auth guard.
+- **Credit gating** (decision: consumed **on interview start**): enforced in the
+  `/interview` server gate **and** server-side in `POST /api/interview/consume`
+  (returns 403 at the limit). Not in middleware — middleware shouldn't hit the DB
+  on every request.
+- **Security**: plan/usage are mutated **only** by the service-role client
+  (`lib/supabase/admin.ts`, `server-only`). RLS lets users *read* their own
+  profile and read/insert their own sessions, but never write plan or usage — so
+  no one can grant themselves Pro from the client.
+- **Currency** (decision: manual toggle, default ₹): the pricing page toggles
+  ₹/$; ₹ → Razorpay, $ → Stripe.
+- **Payments are one-time "upgrade to Pro" charges** (Stripe `mode: payment`,
+  Razorpay order) since no recurring Price/Plan IDs were provided. To make them
+  true subscriptions, create Stripe Prices / Razorpay Plans and switch to
+  `mode: 'subscription'` / Razorpay Subscriptions, then handle renewal webhooks.
+- **Sessions**: a completed 5-question interview is saved as one `sessions` row
+  (`overall_score` + `questions` jsonb). The summary screen still renders even if
+  the save fails.
 
-## Not built yet (per spec)
+## Database
 
-Auth / login, payments, database persistence, user accounts.
+`supabase/schema.sql` creates `profiles` and `sessions` with RLS and a trigger
+that auto-creates a profile on signup. Run it once per project.
+
+## Not built (out of scope)
+
+Resume + JD analyzer (shown as "coming soon"), recurring-subscription billing,
+team accounts.

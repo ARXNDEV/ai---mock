@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Instrument_Serif, Hanken_Grotesk, Space_Mono } from 'next/font/google';
 import './globals.css';
+import TabRehook from '@/components/TabRehook';
 
 const serif = Instrument_Serif({
   subsets: ['latin'],
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <span className="blob b3" />
         </div>
         {children}
+        <TabRehook />
       </body>
     </html>
   );

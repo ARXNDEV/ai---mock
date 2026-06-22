@@ -5,6 +5,7 @@ import { Pricing } from '@/components/landing/Pricing';
 import { Footer } from '@/components/landing/Footer';
 import { SpotlightCursor } from '@/components/motion/SpotlightCursor';
 import { CustomCursor } from '@/components/motion/CustomCursor';
+import { ClickCelebration } from '@/components/motion/ClickCelebration';
 import { KonamiEasterEgg } from '@/components/motion/KonamiEasterEgg';
 
 export default function LandingPage() {
@@ -12,6 +13,7 @@ export default function LandingPage() {
     <>
       <SpotlightCursor />
       <CustomCursor />
+      <ClickCelebration />
       <Navbar />
       <main>
         <Hero />

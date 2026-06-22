@@ -21,9 +21,9 @@ export function buildQuestionPrompt(params: {
     jd.trim() ? `\nJob description for context:\n"""\n${jd.trim()}\n"""` : '',
     `\nQuestions already asked (do NOT repeat or closely paraphrase any of these):\n${previous}`,
     lastAnswer?.trim()
-      ? `\nThe candidate's previous answer was:\n"""\n${lastAnswer.trim()}\n"""\nAsk a question that follows on naturally — probe deeper into something they raised (or skated over), or pivot to a related area to test their breadth. Make it feel like a real interviewer reacting to what they just said.`
+      ? `\nThe candidate just answered with:\n"""\n${lastAnswer.trim()}\n"""\nAsk this as a live FOLLOW-UP. Open by briefly reacting to a specific thing they actually said (quote or paraphrase it), then ask ONE focused question that digs into it — push for a concrete example, a trade-off they glossed over, an edge case, or the "why" behind a claim. It must read like a real interviewer reacting in the moment, not a generic next question. Occasionally (about 1 in 3) instead pivot to a fresh, related area so the interview still covers breadth.`
       : '',
-    `\nVary the question type across the interview — mix technical, behavioral, and situational questions.`,
+    `\nAcross the interview, mix technical, behavioral, and situational questions.`,
     `Calibrate the difficulty to the ${DIFFICULTY_LABELS[difficulty]} level.`,
     `\nRespond with ONLY a JSON object, no markdown and no extra text, in exactly this shape:`,
     `{"question": "<the interview question as a single string>"}`,

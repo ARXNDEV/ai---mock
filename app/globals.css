@@ -127,6 +127,13 @@ a {
   }
 }
 
+/* When the custom cursor is active (desktop mouse only, set in JS), hide the
+   native cursor so the dot+ring stand in for it. */
+body.custom-cursor-active,
+body.custom-cursor-active * {
+  cursor: none !important;
+}
+
 /* Premium, accessible focus states (keyboard only). */
 a:focus-visible,
 button:focus-visible,

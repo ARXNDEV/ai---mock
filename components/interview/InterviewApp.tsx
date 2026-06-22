@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { AnswerRecord, InterviewConfig, Role, Difficulty } from '@/lib/types';
 import type { SessionQuestion } from '@/lib/database.types';
 import { MAX_QUESTIONS } from '@/lib/constants';
@@ -55,6 +56,7 @@ export default function InterviewApp({
   initialRole: Role;
   initialDifficulty: Difficulty;
 }) {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>('setup');
   const [config, setConfig] = useState<InterviewConfig | null>(null);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
@@ -147,8 +149,23 @@ export default function InterviewApp({
     }));
     try {
       await saveSession({ role: cfg.role, difficulty: cfg.difficulty, overall_score: overall, questions });
-    } catch {
-      // non-blocking
+    } catch (e) {
+      // non-blocking, but surface it so failures aren't silent
+      console.error('[InterviewApp] failed to save session', e);
+    }
+  }
+
+  // "End Interview" — save what's been answered so far (incl. the current,
+  // already-scored answer if present) and jump to the summary; otherwise just
+  // leave. This means stopping early still counts and shows the share option.
+  async function handleEndEarly(currentRecord: AnswerRecord | null) {
+    const all = currentRecord ? [...answers, currentRecord] : answers;
+    if (config && all.length > 0) {
+      setAnswers(all);
+      await persistSession(all, config);
+      setPhase('summary');
+    } else {
+      router.push('/dashboard');
     }
   }
 
@@ -274,6 +291,7 @@ export default function InterviewApp({
       isLastQuestion={answers.length + 1 >= MAX_QUESTIONS}
       onNext={handleNext}
       onAnswerEvaluated={handleAnswerEvaluated}
+      onEnd={handleEndEarly}
     />
   );
 }

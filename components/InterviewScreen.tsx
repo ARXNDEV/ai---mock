@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Volume2, VolumeX } from 'lucide-react';
 import type { AnswerRecord, Feedback, InterviewConfig } from '@/lib/types';
 import { ROLE_LABELS, DIFFICULTY_LABELS } from '@/lib/constants';
@@ -48,6 +47,7 @@ export default function InterviewScreen({
   isLastQuestion,
   onNext,
   onAnswerEvaluated,
+  onEnd,
 }: {
   config: InterviewConfig;
   question: string;
@@ -56,6 +56,7 @@ export default function InterviewScreen({
   isLastQuestion: boolean;
   onNext: (record: AnswerRecord) => void;
   onAnswerEvaluated?: (transcript: string) => void;
+  onEnd?: (record: AnswerRecord | null) => void;
 }) {
   const recorder = useRecorder();
   const captions = useSpeechCaptions();
@@ -445,9 +446,15 @@ export default function InterviewScreen({
           <span className="tl">Elapsed</span>
           <span>{fmt(elapsed)}</span>
         </div>
-        <Link href="/dashboard" className="btn btn-line">
-          End Interview
-        </Link>
+        <button
+          type="button"
+          className="btn btn-line"
+          onClick={() =>
+            onEnd?.(phase === 'feedback' && feedback ? { question, transcript, feedback } : null)
+          }
+        >
+          End &amp; See Summary
+        </button>
       </div>
     </div>
   );

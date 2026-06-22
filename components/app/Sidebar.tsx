@@ -9,13 +9,11 @@ import { createClient } from '@/lib/supabase/client';
 const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/interview', label: 'New Interview', icon: Mic },
+  { href: '/resume', label: 'Resume Analyzer', icon: FileText },
   { href: '/history', label: 'History', icon: History },
 ];
 
-const soonItems: { label: string; icon: LucideIcon }[] = [
-  { label: 'Resume Analyzer', icon: FileText },
-  { label: 'Settings', icon: Settings },
-];
+const soonItems: { label: string; icon: LucideIcon }[] = [{ label: 'Settings', icon: Settings }];
 
 export function Sidebar({ email, plan }: { email: string; plan: string }) {
   const pathname = usePathname();

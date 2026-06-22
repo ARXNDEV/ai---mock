@@ -8,6 +8,7 @@ import { ROLE_LABELS, DIFFICULTY_LABELS } from '@/lib/constants';
 import { DashShell } from '@/components/app/DashShell';
 import { Metrics } from '@/components/dashboard/Metrics';
 import { QuickStart } from '@/components/dashboard/QuickStart';
+import { ScoreTrend } from '@/components/dashboard/ScoreTrend';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +106,8 @@ export default async function DashboardPage() {
       />
 
       <QuickStart />
+
+      <ScoreTrend sessions={sessions} />
 
       <div className="sec-label">Recent Sessions</div>
       <div className="sessions">

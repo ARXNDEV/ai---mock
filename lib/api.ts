@@ -1,6 +1,6 @@
 'use client';
 
-import type { Feedback, Role, Difficulty } from './types';
+import type { Feedback, Role, Difficulty, ResumeAnalysis } from './types';
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -34,6 +34,10 @@ export async function evaluateAnswer(params: {
   transcript: string;
 }): Promise<Feedback> {
   return postJson<Feedback>('/api/evaluate', params);
+}
+
+export async function analyzeResume(params: { resume: string; jd: string }): Promise<ResumeAnalysis> {
+  return postJson<ResumeAnalysis>('/api/resume', params);
 }
 
 export async function transcribeAudio(blob: Blob): Promise<string> {

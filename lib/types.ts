@@ -23,3 +23,11 @@ export interface AnswerRecord {
   transcript: string;
   feedback: Feedback;
 }
+
+export interface ResumeAnalysis {
+  matchScore: number; // 0-100
+  summary: string;
+  strengths: string[];
+  gaps: string[];
+  suggestions: string[];
+}

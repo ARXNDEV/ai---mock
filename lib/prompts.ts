@@ -53,3 +53,21 @@ export function buildEvaluationPrompt(params: {
     .filter(Boolean)
     .join('\n');
 }
+
+/** Build the prompt that analyzes a resume against a target job description. */
+export function buildResumePrompt(params: { resume: string; jd: string }): string {
+  const { resume, jd } = params;
+
+  return [
+    `Analyze how well the candidate's resume matches the target job, as an expert technical recruiter would. Be specific and reference the actual content.`,
+    `\nResume:\n"""\n${resume.trim()}\n"""`,
+    jd.trim()
+      ? `\nTarget job description:\n"""\n${jd.trim()}\n"""`
+      : `\n(No job description provided — assess the resume's general strength for the candidate's apparent target role.)`,
+    `\nReturn ONLY a JSON object, no markdown and no extra text, in exactly this shape:`,
+    `{"matchScore": <integer 0-100>, "summary": "<2-sentence overall assessment>", "strengths": ["<specific strength>", ...], "gaps": ["<missing skill or weakness vs the JD>", ...], "suggestions": ["<concrete, prioritized fix>", ...]}`,
+    `Give 3 to 5 items in each array, ordered by importance.`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}

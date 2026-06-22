@@ -2,20 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Volume2, VolumeX } from 'lucide-react';
 import type { AnswerRecord, Feedback, InterviewConfig } from '@/lib/types';
 import { ROLE_LABELS, DIFFICULTY_LABELS } from '@/lib/constants';
 import { useRecorder } from '@/hooks/useRecorder';
+import { useSpeechCaptions } from '@/hooks/useSpeechCaptions';
 import { transcribeAudio, evaluateAnswer } from '@/lib/api';
+import { speak, cancelSpeech } from '@/lib/speech';
 import { ScoreRing } from './interview/ScoreRing';
+import { Waveform } from './interview/Waveform';
+import { Typewriter } from './motion/Typewriter';
 
 type Phase = 'idle' | 'transcribing' | 'review' | 'evaluating' | 'feedback';
 
-function speak(text: string) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  window.speechSynthesis.speak(u);
-}
+const MUTE_KEY = 'intervue:tts-muted';
 
 function fmt(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -54,20 +54,63 @@ export default function InterviewScreen({
   onNext: (record: AnswerRecord) => void;
 }) {
   const recorder = useRecorder();
+  const captions = useSpeechCaptions();
   const [phase, setPhase] = useState<Phase>('idle');
   const [transcript, setTranscript] = useState('');
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
+  const [muted, setMuted] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem(MUTE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spokenRef = useRef(false);
 
+  // Speak the question once on mount (the AI interviewer asking it aloud).
   useEffect(() => {
     if (spokenRef.current) return;
     spokenRef.current = true;
-    speak(question);
+    if (!muted) speak(question, { onStart: () => setAiSpeaking(true), onEnd: () => setAiSpeaking(false) });
+    return () => cancelSpeech();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function toggleMute() {
+    setMuted((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(MUTE_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      if (next) {
+        cancelSpeech();
+        setAiSpeaking(false);
+      } else {
+        speak(question, { onStart: () => setAiSpeaking(true), onEnd: () => setAiSpeaking(false) });
+      }
+      return next;
+    });
+  }
+
+  function toggleRecording() {
+    if (recorder.isRecording) {
+      recorder.stop();
+      captions.stop();
+    } else {
+      cancelSpeech();
+      setAiSpeaking(false);
+      captions.reset();
+      captions.start();
+      recorder.start();
+    }
+  }
 
   useEffect(() => {
     if (recorder.isRecording) {
@@ -121,17 +164,19 @@ export default function InterviewScreen({
   const recording = recorder.isRecording;
   const pct = Math.round((questionNumber / totalQuestions) * 100);
   const showTranscriptField = phase === 'review' || phase === 'evaluating' || phase === 'feedback';
-  const statusText = recording
-    ? 'Listening to your answer'
-    : phase === 'transcribing'
-      ? 'Transcribing…'
-      : phase === 'evaluating'
-        ? 'Scoring your answer'
-        : phase === 'feedback'
-          ? 'Feedback ready'
-          : phase === 'review'
-            ? 'Review your answer'
-            : 'Ready when you are';
+  const statusText = aiSpeaking
+    ? 'Asking the question…'
+    : recording
+      ? 'Listening to your answer'
+      : phase === 'transcribing'
+        ? 'Transcribing…'
+        : phase === 'evaluating'
+          ? 'Scoring your answer'
+          : phase === 'feedback'
+            ? 'Feedback ready'
+            : phase === 'review'
+              ? 'Review your answer'
+              : 'Ready when you are';
 
   return (
     <div className="interview">
@@ -156,23 +201,46 @@ export default function InterviewScreen({
           </div>
 
           <div className="ai-avatar-row">
-            <div className={recording ? 'ai-avatar live' : 'ai-avatar'}>
+            <div className={recording || aiSpeaking ? 'ai-avatar live' : 'ai-avatar'}>
               <svg className="ico" viewBox="0 0 24 24">
                 <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                 <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" />
               </svg>
             </div>
-            <div>
+            <div style={{ flex: 1 }}>
               <div className="ai-name">Aria · AI Interviewer</div>
               <div className="ai-status">
                 <span className="blip" /> {statusText}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={toggleMute}
+              aria-label={muted ? 'Unmute interviewer voice' : 'Mute interviewer voice'}
+              title={muted ? 'Unmute interviewer voice' : 'Mute interviewer voice'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: 'var(--r-sm)',
+                border: '1px solid var(--line)',
+                background: 'var(--card)',
+                color: muted ? 'var(--ink-mute)' : 'var(--accent)',
+                cursor: 'pointer',
+                flex: 'none',
+              }}
+            >
+              {muted ? <VolumeX width={18} height={18} /> : <Volume2 width={18} height={18} />}
+            </button>
           </div>
 
           <div className="q-card">
             <div className="q-tag">Current Question</div>
-            <div className="q-text">{question}</div>
+            <div className="q-text">
+              <Typewriter text={question} />
+            </div>
             <div className="q-hint">
               <span className="qh-mark">✦</span> Take a moment to structure your answer — explain the{' '}
               <em>what</em>, then the <em>why</em>.
@@ -188,6 +256,11 @@ export default function InterviewScreen({
                 </span>
               )}
             </div>
+            {recording && (
+              <div style={{ marginBottom: 14 }}>
+                <Waveform stream={recorder.stream} active={recording} />
+              </div>
+            )}
             {showTranscriptField ? (
               <textarea
                 className="t-text"
@@ -197,14 +270,18 @@ export default function InterviewScreen({
                 rows={5}
                 placeholder="Your answer…"
               />
+            ) : recording ? (
+              <div className="t-text">
+                <span style={{ color: captions.text ? 'var(--ink)' : 'var(--ink-mute)' }}>
+                  {captions.text || 'Listening… speak your answer now.'}
+                </span>
+              </div>
             ) : (
               <div className="t-text">
                 <span className="placeholder">
-                  {recording
-                    ? 'Listening… speak your answer now.'
-                    : phase === 'transcribing'
-                      ? 'Transcribing your answer…'
-                      : 'Your spoken answer will appear here. Tap the record button below to begin.'}
+                  {phase === 'transcribing'
+                    ? 'Transcribing your answer…'
+                    : 'Your spoken answer will appear here. Tap the record button below to begin.'}
                 </span>
               </div>
             )}
@@ -285,7 +362,7 @@ export default function InterviewScreen({
           <button
             className={recording ? 'rec-btn active' : 'rec-btn'}
             aria-label="Record"
-            onClick={() => (recording ? recorder.stop() : recorder.start())}
+            onClick={toggleRecording}
             disabled={phase === 'transcribing' || phase === 'evaluating'}
           >
             <svg className="rec-mic ico" viewBox="0 0 24 24">

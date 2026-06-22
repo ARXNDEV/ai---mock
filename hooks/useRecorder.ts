@@ -23,6 +23,8 @@ export function useRecorder() {
   const [status, setStatus] = useState<RecorderStatus>('idle');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Exposed while recording so visualizers (e.g. the live waveform) can analyse it.
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -40,6 +42,7 @@ export function useRecorder() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      setStream(stream);
 
       const mimeType = pickMimeType();
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
@@ -56,6 +59,7 @@ export function useRecorder() {
         setAudioBlob(blob);
         streamRef.current?.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
+        setStream(null);
         setStatus('stopped');
       };
 
@@ -82,6 +86,7 @@ export function useRecorder() {
   const reset = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setStream(null);
     setAudioBlob(null);
     setError(null);
     setStatus('idle');
@@ -91,6 +96,7 @@ export function useRecorder() {
     status,
     audioBlob,
     error,
+    stream,
     isRecording: status === 'recording',
     start,
     stop,

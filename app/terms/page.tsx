@@ -70,7 +70,7 @@ export default function TermsPage() {
       <h2>Changes & contact</h2>
       <p>
         We may update these terms; continued use after changes means you accept them. Questions? Contact{' '}
-        <a href="mailto:support@intervue.ai">support@intervue.ai</a>.
+        <a href="mailto:iarunrao01@gmail.com">iarunrao01@gmail.com</a>.
       </p>
     </LegalShell>
   );

@@ -54,7 +54,7 @@ export default function SecurityPage() {
       <h2>Responsible disclosure</h2>
       <p>
         Found a vulnerability? We’d love to hear from you. Email{' '}
-        <a href="mailto:security@intervue.ai">security@intervue.ai</a> with details and steps to reproduce, and please
+        <a href="mailto:iarunrao01@gmail.com">iarunrao01@gmail.com</a> with details and steps to reproduce, and please
         give us reasonable time to fix it before any public disclosure. We won’t pursue good-faith security research.
       </p>
     </LegalShell>

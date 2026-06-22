@@ -73,7 +73,7 @@ export default function PrivacyPage() {
       <h2>Your rights</h2>
       <p>
         You can access, correct, export, or delete your personal data. To exercise these rights, contact us at{' '}
-        <a href="mailto:privacy@intervue.ai">privacy@intervue.ai</a>. Depending on your region (e.g. GDPR/CCPA), you may
+        <a href="mailto:iarunrao01@gmail.com">iarunrao01@gmail.com</a>. Depending on your region (e.g. GDPR/CCPA), you may
         have additional rights, which we honor.
       </p>
 
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
       <h2>Changes & contact</h2>
       <p>
         We may update this policy as the product evolves; we’ll revise the “last updated” date above. Questions? Reach us
-        at <a href="mailto:privacy@intervue.ai">privacy@intervue.ai</a>.
+        at <a href="mailto:iarunrao01@gmail.com">iarunrao01@gmail.com</a>.
       </p>
     </LegalShell>
   );

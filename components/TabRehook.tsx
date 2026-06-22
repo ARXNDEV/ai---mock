@@ -3,24 +3,25 @@
 import { useEffect } from 'react';
 
 /**
- * Re-engagement tab title: when the user switches away from the tab, the
- * document title cycles through "come back" messages (and the favicon flips
- * to a sad face). Everything is restored the moment the tab regains focus.
+ * Re-engagement tab: when the user switches away from the tab, the title AND
+ * the favicon flip every second to grab attention — the title cycles through
+ * "come back" messages while the favicon alternates between the two brand
+ * marks. Everything is restored the moment the tab regains focus.
  *
  * Mounted once in the root layout, so it applies across every route. The
  * current page title is captured at the moment the tab is hidden, so client
  * navigations keep restoring the right title.
  */
 const MESSAGES = ['👀 Your interview is waiting…', '💔 We miss you! Come back', '🎯 Don’t ghost your prep'];
-// When the tab loses focus, flip the favicon from the arrow mark to the book mark.
-const AWAY_FAVICON = '/favicon-book.png';
+const AWAY_FAVICON = '/favicon-book.png'; // book mark, alternated against the default arrow
+const TICK_MS = 1000; // flip once per second
 
 export default function TabRehook() {
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
     let savedTitle = document.title;
 
-    // Grab the current favicon href so we can restore it later.
+    // Grab the current favicon href so we can alternate against it / restore it.
     const iconEl = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
     const savedIcon = iconEl?.getAttribute('href') ?? null;
 
@@ -32,13 +33,16 @@ export default function TabRehook() {
     const handleVisibility = () => {
       if (document.hidden) {
         savedTitle = document.title; // capture the real, current page title
+        // Alternate favicon between the book mark and whatever the page's icon was.
+        const icons = savedIcon ? [AWAY_FAVICON, savedIcon] : [AWAY_FAVICON];
         let i = 0;
-        document.title = MESSAGES[0];
-        setFavicon(AWAY_FAVICON);
-        timer = setInterval(() => {
-          i = (i + 1) % MESSAGES.length;
-          document.title = MESSAGES[i];
-        }, 1200);
+        const tick = () => {
+          document.title = MESSAGES[i % MESSAGES.length];
+          setFavicon(icons[i % icons.length]);
+          i += 1;
+        };
+        tick(); // apply immediately, then flip every second
+        timer = setInterval(tick, TICK_MS);
       } else {
         if (timer) clearInterval(timer);
         timer = undefined;

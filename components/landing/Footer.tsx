@@ -17,9 +17,9 @@ export function Footer() {
         </div>
         <div className="footer-col">
           <h4>Legal</h4>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
-          <a href="#">Security</a>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/security">Security</Link>
         </div>
         <div className="footer-col">
           <h4>Company</h4>

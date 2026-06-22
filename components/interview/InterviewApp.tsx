@@ -82,6 +82,8 @@ export default function InterviewApp({
         jd: cfg.jd,
         previousQuestions,
         lastAnswer,
+        focus: cfg.focus,
+        resume: cfg.resume,
       });
       setAskedQuestions((prev) => [...prev, q]);
       setCurrentQuestion(q);
@@ -95,13 +97,15 @@ export default function InterviewApp({
   // Kick off the next question as soon as an answer is scored, so advancing is
   // instant. Best-effort: resolves to null on failure and handleNext re-fetches.
   function handleAnswerEvaluated(transcript: string) {
-    if (!config || answers.length + 1 >= MAX_QUESTIONS) return;
+    if (!config || answers.length + 1 >= config.questionCount) return;
     nextQuestionPromiseRef.current = fetchNextQuestion({
       role: config.role,
       difficulty: config.difficulty,
       jd: config.jd,
       previousQuestions: askedQuestions,
       lastAnswer: transcript,
+      focus: config.focus,
+      resume: config.resume,
     })
       .then((q) => q)
       .catch(() => null);
@@ -122,6 +126,8 @@ export default function InterviewApp({
         difficulty: cfg.difficulty,
         jd: cfg.jd,
         previousQuestions: [],
+        focus: cfg.focus,
+        resume: cfg.resume,
       });
       setConfig(cfg);
       setAskedQuestions([q]);
@@ -173,7 +179,7 @@ export default function InterviewApp({
   async function handleNext(record: AnswerRecord) {
     const updated = [...answers, record];
     setAnswers(updated);
-    if (updated.length >= MAX_QUESTIONS || !config) {
+    if (!config || updated.length >= config.questionCount) {
       if (config) await persistSession(updated, config);
       setPhase('summary');
       return;
@@ -288,8 +294,8 @@ export default function InterviewApp({
       config={config as InterviewConfig}
       question={currentQuestion}
       questionNumber={answers.length + 1}
-      totalQuestions={MAX_QUESTIONS}
-      isLastQuestion={answers.length + 1 >= MAX_QUESTIONS}
+      totalQuestions={config?.questionCount ?? MAX_QUESTIONS}
+      isLastQuestion={answers.length + 1 >= (config?.questionCount ?? MAX_QUESTIONS)}
       onNext={handleNext}
       onAnswerEvaluated={handleAnswerEvaluated}
       onEnd={handleEndEarly}

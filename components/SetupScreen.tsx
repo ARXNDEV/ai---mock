@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
-import type { InterviewConfig, Role, Difficulty } from '@/lib/types';
-import { ROLES, DIFFICULTIES } from '@/lib/constants';
+import type { InterviewConfig, Role, Difficulty, InterviewFocus } from '@/lib/types';
+import { ROLES, DIFFICULTIES, QUESTION_COUNTS, FOCUSES, MAX_QUESTIONS } from '@/lib/constants';
 
 function optStyle(active: boolean): CSSProperties {
   return {
@@ -38,7 +38,10 @@ export default function SetupScreen({
 }) {
   const [role, setRole] = useState<Role>(initialRole);
   const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
+  const [questionCount, setQuestionCount] = useState<number>(MAX_QUESTIONS);
+  const [focus, setFocus] = useState<InterviewFocus>('mixed');
   const [jd, setJd] = useState('');
+  const [resume, setResume] = useState('');
 
   return (
     <div className="auth-card" style={{ width: '100%', maxWidth: 560 }}>
@@ -89,6 +92,33 @@ export default function SetupScreen({
         </div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 14, marginBottom: 18 }}>
+        <div>
+          <div className="eyebrow" style={{ color: 'var(--ink-mute)', marginBottom: 10 }}>
+            Questions
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+            {QUESTION_COUNTS.map((n) => (
+              <button key={n} type="button" onClick={() => setQuestionCount(n)} style={optStyle(questionCount === n)}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="eyebrow" style={{ color: 'var(--ink-mute)', marginBottom: 10 }}>
+            Focus
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+            {FOCUSES.map((f) => (
+              <button key={f.value} type="button" onClick={() => setFocus(f.value)} style={optStyle(focus === f.value)}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div style={{ marginBottom: 18 }}>
         <div className="eyebrow" style={{ color: 'var(--ink-mute)', marginBottom: 10 }}>
           Job description (optional)
@@ -98,6 +128,30 @@ export default function SetupScreen({
           onChange={(e) => setJd(e.target.value)}
           rows={4}
           placeholder="Paste the job description to tailor the questions…"
+          style={{
+            width: '100%',
+            resize: 'vertical',
+            border: '1px solid var(--line-strong)',
+            background: 'var(--card)',
+            borderRadius: 9,
+            padding: 12,
+            fontFamily: 'var(--sans)',
+            fontSize: 14,
+            color: 'var(--ink)',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      <div style={{ marginBottom: 18 }}>
+        <div className="eyebrow" style={{ color: 'var(--ink-mute)', marginBottom: 10 }}>
+          Your résumé (optional) — for personalized questions
+        </div>
+        <textarea
+          value={resume}
+          onChange={(e) => setResume(e.target.value)}
+          rows={3}
+          placeholder="Paste your résumé so questions reference your real projects & stack…"
           style={{
             width: '100%',
             resize: 'vertical',
@@ -124,7 +178,7 @@ export default function SetupScreen({
         className="btn btn-accent"
         style={{ width: '100%' }}
         disabled={loading}
-        onClick={() => onStart({ role, difficulty, jd })}
+        onClick={() => onStart({ role, difficulty, jd, questionCount, focus, resume })}
       >
         {loading ? 'Preparing your interview…' : 'Start Interview →'}
       </button>

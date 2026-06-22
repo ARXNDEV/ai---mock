@@ -1,5 +1,16 @@
-import type { Role, Difficulty } from './types';
+import type { Role, Difficulty, InterviewFocus } from './types';
 import { ROLE_LABELS, DIFFICULTY_LABELS } from './constants';
+
+const FOCUS_INSTRUCTION: Record<InterviewFocus, string> = {
+  mixed:
+    'Vary the question type across the interview — mix technical, behavioral, and situational questions.',
+  technical:
+    'Ask a TECHNICAL question — core concepts, problem-solving, or role-specific knowledge.',
+  behavioral:
+    'Ask a BEHAVIORAL question about past experience (teamwork, conflict, ownership, failure); the candidate should answer in STAR format.',
+  'system-design':
+    'Ask a SYSTEM DESIGN question appropriate to the role (architecture, trade-offs, scaling, data modeling).',
+};
 
 /** Build the user prompt that asks Claude for the next, non-repeating question. */
 export function buildQuestionPrompt(params: {
@@ -9,8 +20,10 @@ export function buildQuestionPrompt(params: {
   previousQuestions: string[];
   /** The candidate's most recent answer — lets the next question adapt to it. */
   lastAnswer?: string;
+  focus?: InterviewFocus;
+  resume?: string;
 }): string {
-  const { role, difficulty, jd, previousQuestions, lastAnswer } = params;
+  const { role, difficulty, jd, previousQuestions, lastAnswer, focus = 'mixed', resume } = params;
 
   const previous = previousQuestions.length
     ? previousQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')
@@ -19,11 +32,14 @@ export function buildQuestionPrompt(params: {
   return [
     `Generate ONE interview question for a ${DIFFICULTY_LABELS[difficulty]} ${ROLE_LABELS[role]} candidate.`,
     jd.trim() ? `\nJob description for context:\n"""\n${jd.trim()}\n"""` : '',
+    resume?.trim()
+      ? `\nThe candidate's résumé:\n"""\n${resume.trim()}\n"""\nWhere natural, tailor questions to their actual background, projects, and tech stack.`
+      : '',
     `\nQuestions already asked (do NOT repeat or closely paraphrase any of these):\n${previous}`,
     lastAnswer?.trim()
       ? `\nThe candidate just answered with:\n"""\n${lastAnswer.trim()}\n"""\nAsk this as a live FOLLOW-UP. Open by briefly reacting to a specific thing they actually said (quote or paraphrase it), then ask ONE focused question that digs into it — push for a concrete example, a trade-off they glossed over, an edge case, or the "why" behind a claim. It must read like a real interviewer reacting in the moment, not a generic next question. Occasionally (about 1 in 3) instead pivot to a fresh, related area so the interview still covers breadth.`
       : '',
-    `\nAcross the interview, mix technical, behavioral, and situational questions.`,
+    `\n${FOCUS_INSTRUCTION[focus]}`,
     `Calibrate the difficulty to the ${DIFFICULTY_LABELS[difficulty]} level.`,
     `\nRespond with ONLY a JSON object, no markdown and no extra text, in exactly this shape:`,
     `{"question": "<the interview question as a single string>"}`,

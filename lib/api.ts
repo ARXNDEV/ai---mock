@@ -1,6 +1,6 @@
 'use client';
 
-import type { Feedback, Role, Difficulty, ResumeAnalysis, TailoredResume } from './types';
+import type { Feedback, Role, Difficulty, InterviewFocus, ResumeAnalysis, TailoredResume } from './types';
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -22,6 +22,8 @@ export async function fetchNextQuestion(params: {
   previousQuestions: string[];
   /** Optional: the candidate's last answer, so the next question can adapt to it. */
   lastAnswer?: string;
+  focus?: InterviewFocus;
+  resume?: string;
 }): Promise<string> {
   const { question } = await postJson<{ question: string }>('/api/next-question', params);
   return question;

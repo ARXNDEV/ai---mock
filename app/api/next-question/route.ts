@@ -3,7 +3,7 @@ import { getGroq, GROQ_LLM_MODEL, INTERVIEWER_SYSTEM_PROMPT } from '@/lib/groq';
 import { buildQuestionPrompt } from '@/lib/prompts';
 import { extractJson } from '@/lib/json';
 import { getUser } from '@/lib/auth';
-import type { Role, Difficulty } from '@/lib/types';
+import type { Role, Difficulty, InterviewFocus } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -13,6 +13,8 @@ interface Body {
   jd?: string;
   previousQuestions?: string[];
   lastAnswer?: string;
+  focus?: InterviewFocus;
+  resume?: string;
 }
 
 export async function POST(request: Request) {
@@ -35,6 +37,8 @@ export async function POST(request: Request) {
       jd: body.jd ?? '',
       previousQuestions: body.previousQuestions ?? [],
       lastAnswer: body.lastAnswer,
+      focus: body.focus,
+      resume: body.resume,
     });
 
     const completion = await getGroq().chat.completions.create({

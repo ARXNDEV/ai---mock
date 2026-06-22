@@ -5,10 +5,15 @@ export type Role = 'swe' | 'ml' | 'data-analyst' | 'pm';
 
 export type Difficulty = 'fresher' | 'mid' | 'senior';
 
+export type InterviewFocus = 'mixed' | 'technical' | 'behavioral' | 'system-design';
+
 export interface InterviewConfig {
   role: Role;
   difficulty: Difficulty;
   jd: string;
+  questionCount: number;
+  focus: InterviewFocus;
+  resume?: string;
 }
 
 export interface RubricScore {

@@ -1,7 +1,16 @@
-import type { Role, Difficulty } from './types';
+import type { Role, Difficulty, InterviewFocus } from './types';
 
-// Number of questions per interview session (Phase 1 MVP).
+// Default number of questions per interview session.
 export const MAX_QUESTIONS = 5;
+
+export const QUESTION_COUNTS = [3, 5, 10];
+
+export const FOCUSES: { value: InterviewFocus; label: string }[] = [
+  { value: 'mixed', label: 'Mixed' },
+  { value: 'technical', label: 'Technical' },
+  { value: 'behavioral', label: 'Behavioral' },
+  { value: 'system-design', label: 'System Design' },
+];
 
 export const ROLES: { value: Role; label: string }[] = [
   { value: 'swe', label: 'Software Engineer' },

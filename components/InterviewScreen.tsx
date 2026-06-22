@@ -9,6 +9,7 @@ import { useRecorder } from '@/hooks/useRecorder';
 import { useSpeechCaptions } from '@/hooks/useSpeechCaptions';
 import { transcribeAudio, evaluateAnswer } from '@/lib/api';
 import { speak, cancelSpeech } from '@/lib/speech';
+import { haptic } from '@/lib/haptics';
 import { ScoreRing } from './interview/ScoreRing';
 import { Waveform } from './interview/Waveform';
 import { Typewriter } from './motion/Typewriter';
@@ -100,6 +101,7 @@ export default function InterviewScreen({
   }
 
   function toggleRecording() {
+    haptic(12);
     if (recorder.isRecording) {
       recorder.stop();
       captions.stop();

@@ -1,8 +1,11 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Instrument_Serif, Hanken_Grotesk, Space_Mono } from 'next/font/google';
 import './globals.css';
 import TabRehook from '@/components/TabRehook';
+import { CommandPalette } from '@/components/motion/CommandPalette';
+import { PageTransition } from '@/components/motion/PageTransition';
+import { PWARegister } from '@/components/motion/PWARegister';
 
 const serif = Instrument_Serif({
   subsets: ['latin'],
@@ -32,7 +35,13 @@ export const metadata: Metadata = {
   title: 'Intervue.ai — Ace your next interview with AI',
   description:
     'Practice with an intelligent AI interviewer, get instant feedback, and land your dream job with confidence.',
-  icons: { icon: '/favicon.png' },
+  icons: { icon: '/favicon.png', apple: '/favicon.png' },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Intervue.ai', statusBarStyle: 'default' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#E5402B',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -44,8 +53,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <span className="blob b2" />
           <span className="blob b3" />
         </div>
-        {children}
+        <PageTransition>{children}</PageTransition>
+        <CommandPalette />
         <TabRehook />
+        <PWARegister />
       </body>
     </html>
   );

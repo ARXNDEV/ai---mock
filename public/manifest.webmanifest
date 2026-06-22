@@ -1,0 +1,14 @@
+{
+  "name": "Intervue.ai — AI Mock Interviews",
+  "short_name": "Intervue.ai",
+  "description": "Practice with an AI interviewer, get instant feedback, and ace your next interview.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F0ECE3",
+  "theme_color": "#E5402B",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "256x256", "type": "image/png", "purpose": "maskable" }
+  ]
+}

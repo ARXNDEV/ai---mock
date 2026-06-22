@@ -1941,6 +1941,157 @@ textarea:focus-visible {
   transform: none;
 }
 
+/* ---- command palette (⌘K) ---- */
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 14vh 20px 20px;
+  background: rgba(26, 23, 18, 0.32);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: cmdk-fade 0.18s ease both;
+}
+.cmdk-panel {
+  width: 100%;
+  max-width: 540px;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-lg);
+  overflow: hidden;
+  animation: cmdk-pop 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.cmdk-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.cmdk-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-family: var(--sans);
+  font-size: 16px;
+  color: var(--ink);
+}
+.cmdk-input::placeholder {
+  color: var(--ink-mute);
+}
+.cmdk-kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: var(--card-2);
+}
+.cmdk-list {
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 8px;
+}
+.cmdk-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.cmdk-item-label {
+  flex: 1;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cmdk-item-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.cmdk-item-arrow {
+  color: var(--ink-mute);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.cmdk-item.active {
+  background: var(--card-2);
+}
+.cmdk-item.active .cmdk-item-arrow {
+  opacity: 1;
+  color: var(--accent);
+}
+.cmdk-empty {
+  padding: 28px;
+  text-align: center;
+  color: var(--ink-mute);
+  font-size: 14px;
+}
+.cmdk-foot {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+.cmdk-foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.cmdk-foot span:last-child {
+  margin-left: auto;
+}
+@keyframes cmdk-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes cmdk-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- page transition (route crossfade) ---- */
+.page-transition {
+  animation: page-fade 0.4s ease both;
+}
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -2065,6 +2216,11 @@ textarea:focus-visible {
   .quickstart,
   .sessions,
   .upgrade-banner {
+    animation: none;
+  }
+  .cmdk-backdrop,
+  .cmdk-panel,
+  .page-transition {
     animation: none;
   }
   html {

@@ -3,10 +3,13 @@ import { Hero } from '@/components/landing/Hero';
 import { Features } from '@/components/landing/Features';
 import { Pricing } from '@/components/landing/Pricing';
 import { Footer } from '@/components/landing/Footer';
+import { SpotlightCursor } from '@/components/motion/SpotlightCursor';
+import { KonamiEasterEgg } from '@/components/motion/KonamiEasterEgg';
 
 export default function LandingPage() {
   return (
     <>
+      <SpotlightCursor />
       <Navbar />
       <main>
         <Hero />
@@ -14,6 +17,7 @@ export default function LandingPage() {
         <Pricing />
       </main>
       <Footer />
+      <KonamiEasterEgg />
     </>
   );
 }

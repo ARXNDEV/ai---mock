@@ -2,38 +2,54 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import { INR_PLANS, USD_PLANS } from '@/lib/plans';
+import { Reveal, RevealItem } from '@/components/motion/Reveal';
 
 type Currency = 'inr' | 'usd';
 
 export function Pricing() {
   const [cur, setCur] = useState<Currency>('inr');
+  const reduce = useReducedMotion();
   const plans = cur === 'inr' ? INR_PLANS : USD_PLANS;
   const free = cur === 'inr' ? '₹0' : '$0';
 
+  // The grid fades up as one block; the cards keep their own CSS hover + the
+  // featured card's raised baseline, which we don't want Framer to overwrite.
+  const gridReveal = reduce
+    ? {}
+    : {
+        initial: { opacity: 0, y: 28 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, amount: 0.15 },
+        transition: { duration: 0.7, ease: [0.2, 0.7, 0.2, 1] as [number, number, number, number] },
+      };
+
   return (
     <section className="section" id="pricing">
-      <div className="sec-head">
-        <div>
+      <Reveal className="sec-head">
+        <RevealItem>
           <div className="eyebrow" style={{ marginBottom: 16 }}>
             Pricing
           </div>
           <h2>
             Simple, <em>honest</em> pricing.
           </h2>
-        </div>
-        <div className="price-toggle">
-          <button className={cur === 'inr' ? 'active' : ''} onClick={() => setCur('inr')}>
-            ₹ Indian
-          </button>
-          <button className={cur === 'usd' ? 'active' : ''} onClick={() => setCur('usd')}>
-            $ International
-          </button>
-        </div>
-      </div>
+        </RevealItem>
+        <RevealItem>
+          <div className="price-toggle">
+            <button className={cur === 'inr' ? 'active' : ''} onClick={() => setCur('inr')}>
+              ₹ Indian
+            </button>
+            <button className={cur === 'usd' ? 'active' : ''} onClick={() => setCur('usd')}>
+              $ International
+            </button>
+          </div>
+        </RevealItem>
+      </Reveal>
 
-      <div className="pricing-grid">
+      <motion.div className="pricing-grid" {...gridReveal}>
         <div className="price-card">
           <div className="plan-name">Free</div>
           <div className="plan-price">
@@ -114,7 +130,7 @@ export function Pricing() {
             Get Annual
           </Link>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

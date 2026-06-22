@@ -98,6 +98,47 @@ a {
   letter-spacing: -0.01em;
 }
 
+/* Subtle gradient shimmer that sweeps across accent text (e.g. "with AI"). */
+.shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--accent) 0%,
+    var(--accent) 38%,
+    #ffd9cf 50%,
+    var(--accent) 62%,
+    var(--accent) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmer-sweep 4.5s linear infinite;
+}
+.hero h1 em.shimmer {
+  color: transparent;
+}
+@keyframes shimmer-sweep {
+  0% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -130% 0;
+  }
+}
+
+/* Premium, accessible focus states (keyboard only). */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--r-sm);
+}
+
 /* ---- buttons ---- */
 .btn {
   display: inline-flex;
@@ -224,6 +265,13 @@ a {
   backdrop-filter: blur(16px) saturate(1.5);
   -webkit-backdrop-filter: blur(16px) saturate(1.5);
   border-bottom: 1px solid var(--line);
+  transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+/* Shrink + deepen the bar once the page scrolls. */
+.nav.scrolled {
+  background: rgba(240, 236, 227, 0.92);
+  border-bottom-color: var(--line-strong);
+  box-shadow: 0 10px 34px -20px rgba(26, 23, 18, 0.4);
 }
 .nav-inner {
   max-width: 1240px;
@@ -232,6 +280,11 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: padding 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.nav.scrolled .nav-inner {
+  padding-top: 11px;
+  padding-bottom: 11px;
 }
 .logo {
   font-family: var(--serif);
@@ -472,34 +525,20 @@ a {
   height: 10px;
   stroke-width: 2.6;
 }
+/* Position only — float + rotation + parallax are driven by <FloatingCard>. */
 .c1 {
   top: 6px;
   right: 24px;
-  --rot: rotate(2deg);
-  animation: bob 7s ease-in-out infinite;
 }
 .c2 {
   top: 158px;
   left: 0;
   z-index: 2;
-  --rot: rotate(-2.5deg);
-  animation: bob 8.5s ease-in-out infinite 0.5s;
 }
 .c3 {
   top: 282px;
   right: 10px;
   width: 240px;
-  --rot: rotate(1.5deg);
-  animation: bob 9.5s ease-in-out infinite 0.9s;
-}
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0) var(--rot);
-  }
-  50% {
-    transform: translateY(-12px) var(--rot);
-  }
 }
 
 /* ---- sections ---- */
@@ -545,10 +584,11 @@ a {
   display: flex;
   flex-direction: column;
 }
+/* Lift + scale come from Framer `whileHover`; CSS owns the glow + border. */
 .feature:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--sh-md);
-  border-color: var(--line-strong);
+  box-shadow: var(--sh-md), 0 0 0 1px rgba(229, 64, 43, 0.16),
+    0 22px 60px -26px rgba(229, 64, 43, 0.4);
+  border-color: rgba(229, 64, 43, 0.3);
 }
 .feat-top {
   display: flex;
@@ -655,8 +695,9 @@ a {
   transition: var(--t);
 }
 .price-card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--sh-md);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--sh-md), 0 0 0 1px rgba(229, 64, 43, 0.14),
+    0 22px 60px -26px rgba(229, 64, 43, 0.35);
 }
 .price-card.featured {
   background: var(--ink);
@@ -665,7 +706,7 @@ a {
   transform: translateY(-8px);
 }
 .price-card.featured:hover {
-  transform: translateY(-12px);
+  transform: translateY(-12px) scale(1.02);
 }
 .price-card.featured .plan-name,
 .price-card.featured .plan-desc {
@@ -1968,5 +2009,15 @@ a {
   .reveal {
     opacity: 1;
     transform: none;
+  }
+  .shimmer {
+    animation: none;
+  }
+  .nav,
+  .nav-inner {
+    transition: none;
+  }
+  html {
+    scroll-behavior: auto;
   }
 }

@@ -2,13 +2,25 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useMotionValue } from 'framer-motion';
 import { DemoModal } from './DemoModal';
+import { FloatingCard } from '@/components/motion/FloatingCard';
+import { Magnetic } from '@/components/motion/Magnetic';
+import { CountUp } from '@/components/motion/CountUp';
 
 export function Hero() {
   const [demoOpen, setDemoOpen] = useState(false);
 
+  // Normalized pointer (-1..1), shared by the floating cards for parallax.
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  function handleMouseMove(e: React.MouseEvent<HTMLElement>) {
+    mx.set((e.clientX / window.innerWidth) * 2 - 1);
+    my.set((e.clientY / window.innerHeight) * 2 - 1);
+  }
+
   return (
-    <section className="hero" id="top">
+    <section className="hero" id="top" onMouseMove={handleMouseMove}>
       <div className="hero-grid">
         <div>
           <div className="hero-badge">
@@ -17,38 +29,48 @@ export function Hero() {
           <h1>
             Ace your next
             <br />
-            interview <em>with AI.</em>
+            interview <em className="shimmer">with AI.</em>
           </h1>
           <p className="sub">
             Practice with an intelligent AI interviewer, get instant feedback, and land your dream
             job with confidence.
           </p>
           <div className="hero-cta">
-            <Link href="/signup" className="btn btn-accent">
-              Start For Free →
-            </Link>
-            <button type="button" className="btn btn-line" onClick={() => setDemoOpen(true)}>
-              ▶ &nbsp;Watch Demo
-            </button>
+            <Magnetic>
+              <Link href="/signup" className="btn btn-accent">
+                Start For Free →
+              </Link>
+            </Magnetic>
+            <Magnetic>
+              <button type="button" className="btn btn-line" onClick={() => setDemoOpen(true)}>
+                ▶ &nbsp;Watch Demo
+              </button>
+            </Magnetic>
           </div>
           <div className="stats-row">
             <div className="stat">
-              <b className="num">57K+</b>
+              <b className="num">
+                <CountUp to={57} suffix="K+" />
+              </b>
               <span>Users</span>
             </div>
             <div className="stat">
-              <b className="num">4.8★</b>
+              <b className="num">
+                <CountUp to={4.8} decimals={1} suffix="★" />
+              </b>
               <span>Rating</span>
             </div>
             <div className="stat">
-              <b className="num">10K+</b>
+              <b className="num">
+                <CountUp to={10} suffix="K+" />
+              </b>
               <span>Interviews</span>
             </div>
           </div>
         </div>
 
         <div className="clippings">
-          <div className="clip c1">
+          <FloatingCard mx={mx} my={my} className="clip c1" depth={26} floatDuration={7000} rotate={2}>
             <div className="clip-lbl">
               <span>Mock Interview</span>
               <span>SWE · SR</span>
@@ -57,8 +79,9 @@ export function Hero() {
             <div className="bar" style={{ marginTop: 14 }}>
               <i style={{ width: '72%' }} />
             </div>
-          </div>
-          <div className="clip c2">
+          </FloatingCard>
+
+          <FloatingCard mx={mx} my={my} className="clip c2" depth={42} floatDuration={8500} rotate={-2.5}>
             <div className="clip-lbl">
               <span>Final Score</span>
               <span>Q.05 / 05</span>
@@ -73,8 +96,9 @@ export function Hero() {
             >
               Top 12% of candidates
             </div>
-          </div>
-          <div className="clip c3">
+          </FloatingCard>
+
+          <FloatingCard mx={mx} my={my} className="clip c3" depth={16} floatDuration={9500} rotate={1.5}>
             <div className="clip-lbl">
               <span>Feedback</span>
               <span>Live</span>
@@ -95,7 +119,7 @@ export function Hero() {
               </span>{' '}
               Confident, structured pace
             </div>
-          </div>
+          </FloatingCard>
         </div>
       </div>
 

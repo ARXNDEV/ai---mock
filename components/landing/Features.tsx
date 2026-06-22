@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Mic, FileText, BarChart3 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { Reveal, RevealItem, fadeUpItem } from '@/components/motion/Reveal';
 
 interface Feature {
   icon: LucideIcon;
@@ -36,47 +37,31 @@ const features: Feature[] = [
   },
 ];
 
-/** Adds the `.in` reveal class to elements as they scroll into view. */
-function useScrollReveal() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const root = ref.current;
-    if (!root) return;
-    const targets = root.querySelectorAll('.reveal');
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('in');
-            io.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.12 },
-    );
-    targets.forEach((t) => io.observe(t));
-    return () => io.disconnect();
-  }, []);
-  return ref;
-}
-
 export function Features() {
-  const ref = useScrollReveal();
+  const reduce = useReducedMotion();
+
   return (
-    <section className="section" id="features" ref={ref}>
-      <div className="sec-head reveal">
-        <div>
+    <section className="section" id="features">
+      <Reveal className="sec-head">
+        <RevealItem>
           <div className="eyebrow" style={{ marginBottom: 16 }}>
             Features
           </div>
           <h2>
             Everything you need to <em>crack</em> interviews.
           </h2>
-        </div>
-      </div>
-      <div className="features">
-        {features.map((f, i) => (
-          <div className="feature reveal" key={f.no} style={{ transitionDelay: `${(i % 3) * 0.09}s` }}>
+        </RevealItem>
+      </Reveal>
+
+      <Reveal className="features" stagger={0.1}>
+        {features.map((f) => (
+          <motion.div
+            className="feature"
+            key={f.no}
+            variants={fadeUpItem}
+            whileHover={reduce ? undefined : { y: -6, scale: 1.02 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+          >
             <div className="feat-top">
               <div className="feat-ico">
                 <f.icon className="ico" strokeWidth={1.6} />
@@ -86,9 +71,9 @@ export function Features() {
             <h3>{f.title}</h3>
             <p>{f.body}</p>
             <div className="f-tag">{f.tag}</div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </Reveal>
     </section>
   );
 }

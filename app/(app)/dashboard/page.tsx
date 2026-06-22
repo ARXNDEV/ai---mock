@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { getProfile } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { FREE_MONTHLY_INTERVIEWS } from '@/lib/plans';
+import { referralCodeFor } from '@/lib/referral';
 import type { SessionRow } from '@/lib/database.types';
 import type { Role, Difficulty } from '@/lib/types';
 import { ROLE_LABELS, DIFFICULTY_LABELS } from '@/lib/constants';
@@ -9,6 +11,8 @@ import { DashShell } from '@/components/app/DashShell';
 import { Metrics } from '@/components/dashboard/Metrics';
 import { QuickStart } from '@/components/dashboard/QuickStart';
 import { ScoreTrend } from '@/components/dashboard/ScoreTrend';
+import { ReferralCard } from '@/components/referral/ReferralCard';
+import { ReferralClaim } from '@/components/referral/ReferralClaim';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,8 +75,17 @@ export default async function DashboardPage() {
   const streak = computeStreak(sessions.map((s) => s.created_at));
 
   const isPro = profile.plan === 'pro';
-  const remaining = Math.max(0, FREE_MONTHLY_INTERVIEWS - profile.interviews_used_this_month);
-  const remainingLabel = isPro ? 'unlimited plan' : `${remaining} of ${FREE_MONTHLY_INTERVIEWS} left`;
+  const bonus = profile.bonus_interviews ?? 0;
+  const cap = FREE_MONTHLY_INTERVIEWS + bonus;
+  const remaining = Math.max(0, cap - profile.interviews_used_this_month);
+  const remainingLabel = isPro ? 'unlimited plan' : `${remaining} of ${cap} left`;
+
+  // Referral stats (admin client — counting other users' rows bypasses RLS).
+  const referralCode = profile.referral_code ?? referralCodeFor(profile.id);
+  const { count: referredCount } = await createAdminClient()
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('referred_by', profile.id);
 
   const name = email ? email.split('@')[0] : 'there';
   const now = new Date();
@@ -106,6 +119,9 @@ export default async function DashboardPage() {
       />
 
       <QuickStart />
+
+      <ReferralClaim />
+      <ReferralCard code={referralCode} referredCount={referredCount ?? 0} bonus={bonus} />
 
       <ScoreTrend sessions={sessions} />
 

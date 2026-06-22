@@ -27,6 +27,9 @@ export type ProfileRow = {
   plan: Plan;
   interviews_used_this_month: number;
   resumes_used_this_month: number;
+  bonus_interviews: number;
+  referral_code: string | null;
+  referred_by: string | null;
   reset_date: string;
   created_at: string;
 };
@@ -51,6 +54,9 @@ export type Database = {
           plan?: Plan;
           interviews_used_this_month?: number;
           resumes_used_this_month?: number;
+          bonus_interviews?: number;
+          referral_code?: string | null;
+          referred_by?: string | null;
           reset_date?: string;
           created_at?: string;
         };
@@ -59,6 +65,9 @@ export type Database = {
           plan?: Plan;
           interviews_used_this_month?: number;
           resumes_used_this_month?: number;
+          bonus_interviews?: number;
+          referral_code?: string | null;
+          referred_by?: string | null;
           reset_date?: string;
           created_at?: string;
         };

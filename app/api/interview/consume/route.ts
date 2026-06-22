@@ -37,6 +37,8 @@ export async function POST() {
     return NextResponse.json({ ok: true, plan: 'pro', remaining: null });
   }
 
+  // Monthly allowance = base free + any bonus earned from referrals.
+  const cap = FREE_MONTHLY_INTERVIEWS + (profile.bonus_interviews ?? 0);
   let used = profile.interviews_used_this_month;
   let resetDate = profile.reset_date;
   if (new Date(resetDate).getTime() < Date.now()) {
@@ -44,7 +46,7 @@ export async function POST() {
     resetDate = oneMonthFromNow();
   }
 
-  if (used >= FREE_MONTHLY_INTERVIEWS) {
+  if (used >= cap) {
     if (resetDate !== profile.reset_date) {
       await admin
         .from('profiles')
@@ -70,6 +72,6 @@ export async function POST() {
   return NextResponse.json({
     ok: true,
     plan: 'free',
-    remaining: Math.max(0, FREE_MONTHLY_INTERVIEWS - used),
+    remaining: Math.max(0, cap - used),
   });
 }

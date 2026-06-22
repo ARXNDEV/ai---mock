@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { referralCodeFor } from '@/lib/referral';
 import type { ProfileRow } from '@/lib/database.types';
 
 function oneMonthFromNow(): string {
@@ -41,6 +42,17 @@ export async function getProfile(): Promise<{ userId: string; email: string | nu
       .select('*')
       .single();
     profile = reset ?? profile;
+  }
+
+  // Backfill a referral code once (best-effort — tolerate the column not existing).
+  if (profile && !profile.referral_code) {
+    const { data: withCode } = await admin
+      .from('profiles')
+      .update({ referral_code: referralCodeFor(user.id) })
+      .eq('id', user.id)
+      .select('*')
+      .single();
+    if (withCode) profile = withCode;
   }
 
   if (!profile) return null;

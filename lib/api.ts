@@ -81,6 +81,10 @@ export async function consumeInterviewCredit(): Promise<{
   return { ok: true, remaining: data.remaining ?? null, plan: data.plan ?? 'free' };
 }
 
+export async function claimReferral(code: string): Promise<{ ok: boolean; bonus?: number; reason?: string }> {
+  return postJson<{ ok: boolean; bonus?: number; reason?: string }>('/api/referral/claim', { code });
+}
+
 export async function saveSession(payload: {
   role: string;
   difficulty: string;

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Mail, Loader2, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { REFERRAL_STORAGE_KEY } from '@/lib/referral';
 
 export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const searchParams = useSearchParams();
@@ -12,6 +13,18 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'google' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
+
+  // Carry an inbound ?ref code through the auth round-trip (claimed post-login).
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      try {
+        localStorage.setItem(REFERRAL_STORAGE_KEY, ref.trim());
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [searchParams]);
 
   function callbackUrl() {
     const base = typeof window !== 'undefined' ? window.location.origin : '';

@@ -19,6 +19,16 @@ create table if not exists public.profiles (
 alter table public.profiles
   add column if not exists resumes_used_this_month integer not null default 0;
 
+-- Referral system (idempotent).
+alter table public.profiles
+  add column if not exists bonus_interviews integer not null default 0;
+alter table public.profiles
+  add column if not exists referral_code text;
+alter table public.profiles
+  add column if not exists referred_by uuid references auth.users (id);
+create unique index if not exists profiles_referral_code_key
+  on public.profiles (referral_code);
+
 -- ---------------------------------------------------------------------------
 -- sessions: one row per completed mock interview.
 -- ---------------------------------------------------------------------------

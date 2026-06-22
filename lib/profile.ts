@@ -36,7 +36,7 @@ export async function getProfile(): Promise<{ userId: string; email: string | nu
   if (profile && new Date(profile.reset_date).getTime() < Date.now()) {
     const { data: reset } = await admin
       .from('profiles')
-      .update({ interviews_used_this_month: 0, reset_date: oneMonthFromNow() })
+      .update({ interviews_used_this_month: 0, resumes_used_this_month: 0, reset_date: oneMonthFromNow() })
       .eq('id', user.id)
       .select('*')
       .single();

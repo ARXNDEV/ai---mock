@@ -10,9 +10,14 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   plan text not null default 'free' check (plan in ('free', 'pro')),
   interviews_used_this_month integer not null default 0,
+  resumes_used_this_month integer not null default 0,
   reset_date timestamptz not null default (now() + interval '1 month'),
   created_at timestamptz not null default now()
 );
+
+-- Migration for projects created before the Resume Analyzer (idempotent).
+alter table public.profiles
+  add column if not exists resumes_used_this_month integer not null default 0;
 
 -- ---------------------------------------------------------------------------
 -- sessions: one row per completed mock interview.

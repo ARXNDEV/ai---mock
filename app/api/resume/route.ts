@@ -3,6 +3,8 @@ import { getGroq, GROQ_LLM_MODEL } from '@/lib/groq';
 import { buildResumePrompt } from '@/lib/prompts';
 import { extractJson } from '@/lib/json';
 import { getProfile } from '@/lib/profile';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { FREE_MONTHLY_RESUMES } from '@/lib/plans';
 import type { ResumeAnalysis } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -16,13 +18,23 @@ export async function POST(request: Request) {
   try {
     const data = await getProfile();
     if (!data) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (data.profile.plan !== 'pro') {
-      return NextResponse.json({ error: 'Resume Analyzer is a Pro feature.' }, { status: 403 });
+    const { profile, userId } = data;
+    const isPro = profile.plan === 'pro';
+    const used = profile.resumes_used_this_month ?? 0;
+
+    if (!isPro && used >= FREE_MONTHLY_RESUMES) {
+      return NextResponse.json(
+        {
+          error: `You've used all ${FREE_MONTHLY_RESUMES} free résumé analyses this month. Upgrade to Pro for unlimited.`,
+          remaining: 0,
+        },
+        { status: 403 },
+      );
     }
 
     const body = (await request.json()) as Body;
     if (!body.resume || body.resume.trim().length < 40) {
-      return NextResponse.json({ error: 'Please paste your full resume text.' }, { status: 400 });
+      return NextResponse.json({ error: 'Please provide your full résumé text (at least a few lines).' }, { status: 400 });
     }
 
     const prompt = buildResumePrompt({ resume: body.resume, jd: body.jd ?? '' });
@@ -37,14 +49,28 @@ export async function POST(request: Request) {
     });
 
     const text = completion.choices[0]?.message?.content ?? '';
-    const result = extractJson<ResumeAnalysis>(text);
-    if (typeof result.matchScore !== 'number') {
+    const analysis = extractJson<ResumeAnalysis>(text);
+    if (typeof analysis.matchScore !== 'number') {
       throw new Error('Model did not return a valid analysis.');
     }
-    return NextResponse.json(result);
+
+    // Count this analysis for free users (best-effort — tolerate the column
+    // not existing yet so the feature works before the migration is run).
+    let remaining: number | null = isPro ? null : Math.max(0, FREE_MONTHLY_RESUMES - used);
+    if (!isPro) {
+      const admin = createAdminClient();
+      const { error: incErr } = await admin
+        .from('profiles')
+        .update({ resumes_used_this_month: used + 1 })
+        .eq('id', userId);
+      if (incErr) console.error('[resume] usage increment failed', incErr);
+      else remaining = Math.max(0, FREE_MONTHLY_RESUMES - (used + 1));
+    }
+
+    return NextResponse.json({ analysis, remaining });
   } catch (err) {
     console.error('[resume] error:', err);
     const detail = err instanceof Error ? err.message : 'Unknown error';
-    return NextResponse.json({ error: `Failed to analyze resume: ${detail}` }, { status: 500 });
+    return NextResponse.json({ error: `Failed to analyze résumé: ${detail}` }, { status: 500 });
   }
 }

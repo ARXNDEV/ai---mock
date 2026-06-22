@@ -1,4 +1,5 @@
 export const FREE_MONTHLY_INTERVIEWS = 3;
+export const FREE_MONTHLY_RESUMES = 2;
 
 export type PlanKey = 'pro_monthly' | 'pro_annual';
 

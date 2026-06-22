@@ -26,6 +26,7 @@ export type ProfileRow = {
   id: string;
   plan: Plan;
   interviews_used_this_month: number;
+  resumes_used_this_month: number;
   reset_date: string;
   created_at: string;
 };
@@ -49,6 +50,7 @@ export type Database = {
           id: string;
           plan?: Plan;
           interviews_used_this_month?: number;
+          resumes_used_this_month?: number;
           reset_date?: string;
           created_at?: string;
         };
@@ -56,6 +58,7 @@ export type Database = {
           id?: string;
           plan?: Plan;
           interviews_used_this_month?: number;
+          resumes_used_this_month?: number;
           reset_date?: string;
           created_at?: string;
         };

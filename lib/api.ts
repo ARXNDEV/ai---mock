@@ -36,8 +36,11 @@ export async function evaluateAnswer(params: {
   return postJson<Feedback>('/api/evaluate', params);
 }
 
-export async function analyzeResume(params: { resume: string; jd: string }): Promise<ResumeAnalysis> {
-  return postJson<ResumeAnalysis>('/api/resume', params);
+export async function analyzeResume(params: {
+  resume: string;
+  jd: string;
+}): Promise<{ analysis: ResumeAnalysis; remaining: number | null }> {
+  return postJson<{ analysis: ResumeAnalysis; remaining: number | null }>('/api/resume', params);
 }
 
 export async function transcribeAudio(blob: Blob): Promise<string> {

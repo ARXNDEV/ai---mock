@@ -1,4 +1,4 @@
-# AceInterview — AI Mock Interview SaaS
+# Intervue.ai — AI Mock Interview SaaS
 
 A production-style SaaS around an AI mock-interview engine. Users sign in, pick a
 role + difficulty, answer **out loud**, and get instant AI-scored feedback. Free

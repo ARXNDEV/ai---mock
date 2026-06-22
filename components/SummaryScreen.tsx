@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Share2, Check } from 'lucide-react';
 import type { AnswerRecord, Role, Difficulty } from '@/lib/types';
+import { CountUp } from '@/components/motion/CountUp';
+import { fireConfetti } from '@/components/motion/confetti';
 
 function snippet(text: string, max = 80): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
@@ -34,6 +36,12 @@ export default function SummaryScreen({
   const byScoreAsc = [...answers].sort((a, b) => a.feedback.score - b.feedback.score);
   const strengths = byScoreDesc.slice(0, 3).map((a) => a.feedback.good).filter(Boolean);
   const tips = byScoreAsc.slice(0, 3).map((a) => a.feedback.missing).filter(Boolean);
+
+  // Celebrate on results — a bigger burst for a stronger score.
+  useEffect(() => {
+    fireConfetti({ count: 20, bursts: overall >= 8 ? 3 : 2 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleShare() {
     const params = new URLSearchParams({ score: String(overall) });
@@ -74,7 +82,7 @@ export default function SummaryScreen({
           Overall score
         </div>
         <div className={`num s-score ${scoreClass(overall)}`} style={{ fontSize: 76, lineHeight: 1, marginTop: 8 }}>
-          {overall}
+          <CountUp to={overall} decimals={1} />
           <span style={{ fontSize: 26, color: 'var(--ink-mute)' }}>/10</span>
         </div>
         <div className="mono" style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 8 }}>

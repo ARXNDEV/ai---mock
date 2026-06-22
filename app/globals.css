@@ -49,6 +49,20 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   min-height: 100vh;
+  /* Text is non-selectable for a locked-in, app-like feel (covers drag + ⌘/Ctrl+A). */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+/* …but form fields must stay selectable/editable. */
+input,
+textarea,
+select,
+[contenteditable],
+[contenteditable] * {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
 }
 /* film grain */
 body::after {
@@ -1020,6 +1034,29 @@ textarea:focus-visible {
 .metric:hover {
   transform: translateY(-4px);
   box-shadow: var(--sh-md);
+}
+/* Dashboard entrance — staggered rise on load. `backwards` fill keeps the
+   final frame off the element so the :hover transforms above still apply. */
+.metric {
+  animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+.metric:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.metric:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.metric:nth-child(4) {
+  animation-delay: 0.18s;
+}
+.quickstart {
+  animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s backwards;
+}
+.sessions {
+  animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) 0.28s backwards;
+}
+.upgrade-banner {
+  animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) 0.34s backwards;
 }
 .metric .m-top {
   display: flex;
@@ -2023,6 +2060,12 @@ textarea:focus-visible {
   .nav,
   .nav-inner {
     transition: none;
+  }
+  .metric,
+  .quickstart,
+  .sessions,
+  .upgrade-banner {
+    animation: none;
   }
   html {
     scroll-behavior: auto;

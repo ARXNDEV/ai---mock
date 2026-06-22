@@ -44,6 +44,8 @@ export async function evaluateAnswer(params: {
   jd: string;
   question: string;
   transcript: string;
+  mode?: 'voice' | 'code';
+  language?: string;
 }): Promise<Feedback> {
   return postJson<Feedback>('/api/evaluate', params);
 }

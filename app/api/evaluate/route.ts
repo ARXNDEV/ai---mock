@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getGroq, GROQ_LLM_MODEL, INTERVIEWER_SYSTEM_PROMPT } from '@/lib/groq';
-import { buildEvaluationPrompt } from '@/lib/prompts';
+import { buildEvaluationPrompt, buildCodeEvaluationPrompt } from '@/lib/prompts';
 import { extractJson } from '@/lib/json';
 import { getUser } from '@/lib/auth';
 import type { Role, Feedback } from '@/lib/types';
@@ -12,6 +12,8 @@ interface Body {
   transcript: string;
   role: Role;
   jd?: string;
+  mode?: 'voice' | 'code';
+  language?: string;
 }
 
 export async function POST(request: Request) {
@@ -28,12 +30,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = buildEvaluationPrompt({
-      role: body.role,
-      jd: body.jd ?? '',
-      question: body.question,
-      transcript: body.transcript,
-    });
+    const prompt =
+      body.mode === 'code'
+        ? buildCodeEvaluationPrompt({
+            role: body.role,
+            jd: body.jd ?? '',
+            question: body.question,
+            code: body.transcript,
+            language: body.language || 'Python',
+          })
+        : buildEvaluationPrompt({
+            role: body.role,
+            jd: body.jd ?? '',
+            question: body.question,
+            transcript: body.transcript,
+          });
 
     const completion = await getGroq().chat.completions.create({
       model: GROQ_LLM_MODEL,

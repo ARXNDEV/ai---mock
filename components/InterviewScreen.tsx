@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Mic, Code2 } from 'lucide-react';
 import type { AnswerRecord, Feedback, InterviewConfig } from '@/lib/types';
-import { ROLE_LABELS, DIFFICULTY_LABELS } from '@/lib/constants';
+import { ROLE_LABELS, DIFFICULTY_LABELS, CODE_LANGUAGES } from '@/lib/constants';
+import { CodeEditor } from './interview/CodeEditor';
 import { useRecorder } from '@/hooks/useRecorder';
 import { useSpeechCaptions } from '@/hooks/useSpeechCaptions';
 import { transcribeAudio, evaluateAnswer, fetchFollowUp } from '@/lib/api';
@@ -74,6 +75,8 @@ export default function InterviewScreen({
       return false;
     }
   });
+  const [answerMode, setAnswerMode] = useState<'voice' | 'code'>('voice');
+  const [language, setLanguage] = useState<string>('Python');
   const [activeQuestion, setActiveQuestion] = useState(question);
   const [isFollowUp, setIsFollowUp] = useState(false);
   const [mainRecord, setMainRecord] = useState<AnswerRecord | null>(null);
@@ -154,15 +157,36 @@ export default function InterviewScreen({
     }
   }
 
+  function switchMode(m: 'voice' | 'code') {
+    if (m === answerMode) return;
+    setAnswerMode(m);
+    setError(null);
+    setFeedback(null);
+    setTranscript('');
+    setElapsed(0);
+    recorder.reset();
+    captions.reset();
+    cancelSpeech();
+    setAiSpeaking(false);
+    setPhase(m === 'code' ? 'review' : 'idle'); // code mode is editable immediately
+  }
+
   async function handleEvaluate() {
     if (!transcript.trim()) {
-      setError('Please record or type an answer first.');
+      setError(answerMode === 'code' ? 'Please write some code first.' : 'Please record or type an answer first.');
       return;
     }
     setPhase('evaluating');
     setError(null);
     try {
-      const fb = await evaluateAnswer({ role: config.role, jd: config.jd, question, transcript });
+      const fb = await evaluateAnswer({
+        role: config.role,
+        jd: config.jd,
+        question,
+        transcript,
+        mode: answerMode,
+        language: answerMode === 'code' ? language : undefined,
+      });
       setFeedback(fb);
       setPhase('feedback');
       onAnswerEvaluated?.(transcript); // let the parent prefetch the next question
@@ -189,7 +213,7 @@ export default function InterviewScreen({
       setElapsed(0);
       recorder.reset();
       captions.reset();
-      setPhase('idle');
+      setPhase(answerMode === 'code' ? 'review' : 'idle');
       if (!muted) speak(fq, { onStart: () => setAiSpeaking(true), onEnd: () => setAiSpeaking(false) });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load a follow-up.');
@@ -294,41 +318,87 @@ export default function InterviewScreen({
 
           <div className="transcript">
             <div className="t-head">
-              <span>Live Transcript</span>
-              {recording && (
-                <span className="live">
-                  <span className="blip" /> Recording
-                </span>
-              )}
-            </div>
-            {recording && (
-              <div style={{ marginBottom: 14 }}>
-                <Waveform stream={recorder.stream} active={recording} />
+              <span>{answerMode === 'code' ? 'Your Code' : 'Live Transcript'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {recording && answerMode === 'voice' && (
+                  <span className="live">
+                    <span className="blip" /> Recording
+                  </span>
+                )}
+                <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('voice')}
+                    title="Voice / text answer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 11, border: 'none', cursor: 'pointer', background: answerMode === 'voice' ? 'var(--ink)' : 'transparent', color: answerMode === 'voice' ? 'var(--card)' : 'var(--ink-soft)' }}
+                  >
+                    <Mic width={13} height={13} /> Voice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('code')}
+                    title="Code answer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 11, border: 'none', cursor: 'pointer', background: answerMode === 'code' ? 'var(--ink)' : 'transparent', color: answerMode === 'code' ? 'var(--card)' : 'var(--ink-soft)' }}
+                  >
+                    <Code2 width={13} height={13} /> Code
+                  </button>
+                </div>
               </div>
-            )}
-            {showTranscriptField ? (
-              <textarea
-                className="t-text"
-                value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
-                readOnly={phase !== 'review'}
-                rows={5}
-                placeholder="Your answer…"
-              />
-            ) : recording ? (
-              <div className="t-text">
-                <span style={{ color: captions.text ? 'var(--ink)' : 'var(--ink-mute)' }}>
-                  {captions.text || 'Listening… speak your answer now.'}
-                </span>
+            </div>
+
+            {answerMode === 'code' ? (
+              <div>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="mono"
+                  style={{ marginBottom: 10, fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line-strong)', background: 'var(--card)', color: 'var(--ink)' }}
+                >
+                  {CODE_LANGUAGES.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+                <CodeEditor
+                  value={transcript}
+                  onChange={setTranscript}
+                  placeholder={`Write your ${language} solution…`}
+                  readOnly={phase === 'evaluating' || phase === 'feedback'}
+                />
               </div>
             ) : (
-              <div className="t-text">
-                <span className="placeholder">
-                  {phase === 'transcribing'
-                    ? 'Transcribing your answer…'
-                    : 'Your spoken answer will appear here. Tap the record button below to begin.'}
-                </span>
-              </div>
+              <>
+                {recording && (
+                  <div style={{ marginBottom: 14 }}>
+                    <Waveform stream={recorder.stream} active={recording} />
+                  </div>
+                )}
+                {showTranscriptField ? (
+                  <textarea
+                    className="t-text"
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    readOnly={phase !== 'review'}
+                    rows={5}
+                    placeholder="Your answer…"
+                  />
+                ) : recording ? (
+                  <div className="t-text">
+                    <span style={{ color: captions.text ? 'var(--ink)' : 'var(--ink-mute)' }}>
+                      {captions.text || 'Listening… speak your answer now.'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="t-text">
+                    <span className="placeholder">
+                      {phase === 'transcribing'
+                        ? 'Transcribing your answer…'
+                        : 'Your spoken answer will appear here. Tap the record button below to begin.'}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -489,30 +559,42 @@ export default function InterviewScreen({
       </div>
 
       <div className="iv-bottom">
-        <div className="rec-zone">
-          <button
-            className={recording ? 'rec-btn active' : 'rec-btn'}
-            aria-label="Record"
-            onClick={toggleRecording}
-            disabled={phase === 'transcribing' || phase === 'evaluating'}
-          >
-            <svg className="rec-mic ico" viewBox="0 0 24 24">
-              <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" fill="#fff" />
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" />
-            </svg>
-            <span className="rec-square" />
-          </button>
-          <div>
-            <div className="rec-label">{recording ? 'Stop Recording' : 'Start Recording'}</div>
-            <div className="rec-sub">
-              {recording
-                ? 'Recording…'
-                : phase === 'review' || phase === 'feedback'
-                  ? 'Re-record if needed'
-                  : 'Tap to answer'}
+        {answerMode === 'voice' ? (
+          <div className="rec-zone">
+            <button
+              className={recording ? 'rec-btn active' : 'rec-btn'}
+              aria-label="Record"
+              onClick={toggleRecording}
+              disabled={phase === 'transcribing' || phase === 'evaluating'}
+            >
+              <svg className="rec-mic ico" viewBox="0 0 24 24">
+                <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" fill="#fff" />
+                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" />
+              </svg>
+              <span className="rec-square" />
+            </button>
+            <div>
+              <div className="rec-label">{recording ? 'Stop Recording' : 'Start Recording'}</div>
+              <div className="rec-sub">
+                {recording
+                  ? 'Recording…'
+                  : phase === 'review' || phase === 'feedback'
+                    ? 'Re-record if needed'
+                    : 'Tap to answer'}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="rec-zone">
+            <span style={{ display: 'grid', placeItems: 'center', width: 54, height: 54, borderRadius: 13, background: 'var(--card-2)', border: '1px solid var(--line)', color: 'var(--accent)' }}>
+              <Code2 width={22} height={22} />
+            </span>
+            <div>
+              <div className="rec-label">Coding mode</div>
+              <div className="rec-sub">Write your solution, then “Submit for Feedback”</div>
+            </div>
+          </div>
+        )}
         <div className="timer">
           <span className="tl">Elapsed</span>
           <span>{fmt(elapsed)}</span>

@@ -5,6 +5,8 @@ export const MAX_QUESTIONS = 5;
 
 export const QUESTION_COUNTS = [3, 5, 10];
 
+export const CODE_LANGUAGES = ['Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'SQL'];
+
 export const FOCUSES: { value: InterviewFocus; label: string }[] = [
   { value: 'mixed', label: 'Mixed' },
   { value: 'technical', label: 'Technical' },

@@ -68,6 +68,32 @@ export function buildFollowUpPrompt(params: {
     .join('\n');
 }
 
+/** Build the prompt to evaluate a CODE solution. Returns the same Feedback JSON. */
+export function buildCodeEvaluationPrompt(params: {
+  role: Role;
+  jd: string;
+  question: string;
+  code: string;
+  language: string;
+}): string {
+  const { role, jd, question, code, language } = params;
+  return [
+    `Evaluate the candidate's CODE solution for a ${ROLE_LABELS[role]} coding question. Language: ${language}.`,
+    jd.trim() ? `\nJob description for context:\n"""\n${jd.trim()}\n"""` : '',
+    `\nQuestion:\n"""\n${question}\n"""`,
+    `\nCandidate's code:\n\`\`\`${language.toLowerCase()}\n${code}\n\`\`\``,
+    `\nScore it 1-10 honestly. Also score these four dimensions 1-10 with a one-line note each:`,
+    `- Correctness: does it solve the problem and handle the core cases?`,
+    `- Complexity: time/space efficiency and the chosen approach.`,
+    `- Edge cases: handling of empty/invalid/boundary inputs.`,
+    `- Readability: naming, structure, and clarity.`,
+    `\nRespond with ONLY a JSON object, no markdown and no extra text, in exactly this shape:`,
+    `{"score": <integer 1-10>, "rubric": [{"dimension": "Correctness", "score": <1-10>, "note": "<short>"}, {"dimension": "Complexity", "score": <1-10>, "note": "<short>"}, {"dimension": "Edge cases", "score": <1-10>, "note": "<short>"}, {"dimension": "Readability", "score": <1-10>, "note": "<short>"}], "good": "<what's strong>", "missing": "<bugs, gaps, or weaknesses>", "suggestion": "<a concise improved approach or corrected code>"}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 /** Build the user prompt that asks Claude to evaluate a transcribed answer. */
 export function buildEvaluationPrompt(params: {
   role: Role;

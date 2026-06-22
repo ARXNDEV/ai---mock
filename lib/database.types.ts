@@ -16,6 +16,7 @@ export type SessionQuestion = {
   good: string;
   missing: string;
   suggestion: string;
+  rubric?: { dimension: string; score: number; note: string }[];
 };
 
 // NOTE: these MUST be `type` aliases, not `interface`s. The Supabase typed

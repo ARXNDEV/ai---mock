@@ -11,11 +11,18 @@ export interface InterviewConfig {
   jd: string;
 }
 
-export interface Feedback {
+export interface RubricScore {
+  dimension: string; // Content | Structure | Communication | Depth
   score: number; // 1-10
+  note: string; // one-line justification
+}
+
+export interface Feedback {
+  score: number; // 1-10 overall
   good: string;
   missing: string;
-  suggestion: string;
+  suggestion: string; // ideal/model answer
+  rubric?: RubricScore[]; // per-dimension breakdown (added in the rubric upgrade)
 }
 
 export interface AnswerRecord {

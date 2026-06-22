@@ -317,6 +317,31 @@ export default function InterviewScreen({
 
           {feedback ? (
             <>
+              {feedback.rubric && feedback.rubric.length > 0 && (
+                <div className="fb-block" style={{ paddingTop: 20, borderTop: '1px solid rgba(240,236,227,0.15)' }}>
+                  <div className="fb-h" style={{ color: 'rgba(240,236,227,0.7)' }}>
+                    <span className="dot" style={{ background: 'rgba(240,236,227,0.5)' }} /> Breakdown
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {feedback.rubric.map((r, i) => (
+                      <div key={i}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                          <span style={{ fontSize: 13, color: 'var(--paper)' }}>{r.dimension}</span>
+                          <span className="mono" style={{ fontSize: 12, color: 'rgba(240,236,227,0.7)' }}>{r.score}/10</span>
+                        </div>
+                        <div style={{ height: 5, borderRadius: 3, background: 'rgba(240,236,227,0.14)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${r.score * 10}%`, background: 'var(--accent-grad)', borderRadius: 3 }} />
+                        </div>
+                        {r.note && (
+                          <div style={{ fontSize: 11.5, color: 'rgba(240,236,227,0.55)', marginTop: 5, lineHeight: 1.4 }}>
+                            {r.note}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="fb-block good">
                 <div className="fb-h">
                   <span className="dot" /> What you did well

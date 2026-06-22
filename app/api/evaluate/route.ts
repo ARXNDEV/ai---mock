@@ -50,11 +50,22 @@ export async function POST(request: Request) {
 
     // Normalize: clamp the score to 1-10 and guarantee string fields.
     const score = Math.max(1, Math.min(10, Math.round(Number(parsed.score) || 0)));
+    const rubric = Array.isArray(parsed.rubric)
+      ? parsed.rubric
+          .filter((r) => r && typeof r.dimension === 'string')
+          .slice(0, 4)
+          .map((r) => ({
+            dimension: String(r.dimension),
+            score: Math.max(1, Math.min(10, Math.round(Number(r.score) || 0))),
+            note: typeof r.note === 'string' ? r.note : '',
+          }))
+      : undefined;
     const feedback: Feedback = {
       score,
       good: parsed.good ?? '',
       missing: parsed.missing ?? '',
       suggestion: parsed.suggestion ?? '',
+      ...(rubric && rubric.length ? { rubric } : {}),
     };
 
     return NextResponse.json(feedback);

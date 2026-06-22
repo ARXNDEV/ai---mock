@@ -146,6 +146,7 @@ export default function InterviewApp({
       good: r.feedback.good,
       missing: r.feedback.missing,
       suggestion: r.feedback.suggestion,
+      ...(r.feedback.rubric ? { rubric: r.feedback.rubric } : {}),
     }));
     try {
       await saveSession({ role: cfg.role, difficulty: cfg.difficulty, overall_score: overall, questions });

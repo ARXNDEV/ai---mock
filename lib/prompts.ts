@@ -47,8 +47,14 @@ export function buildEvaluationPrompt(params: {
     `\nQuestion:\n"""\n${question}\n"""`,
     `\nCandidate's answer (transcribed from audio — may contain minor transcription errors):\n"""\n${transcript}\n"""`,
     `\nScore the answer honestly from 1 to 10 (10 = outstanding). Be strict but fair, and account for the fact that this was spoken aloud.`,
+    `\nAlso score these four dimensions 1-10 with a one-line note each:`,
+    `- Content: relevance, correctness, and substance of what they said.`,
+    `- Structure: organization and logical flow (e.g. STAR for behavioral).`,
+    `- Communication: clarity, conciseness, and confidence.`,
+    `- Depth: technical/role-specific depth, examples, and trade-offs.`,
+    `The overall score should roughly reflect these four.`,
     `\nRespond with ONLY a JSON object, no markdown and no extra text, in exactly this shape:`,
-    `{"score": <integer 1-10>, "good": "<what the candidate did well>", "missing": "<what was missing or weak>", "suggestion": "<a concise stronger model answer>"}`,
+    `{"score": <integer 1-10>, "rubric": [{"dimension": "Content", "score": <1-10>, "note": "<short>"}, {"dimension": "Structure", "score": <1-10>, "note": "<short>"}, {"dimension": "Communication", "score": <1-10>, "note": "<short>"}, {"dimension": "Depth", "score": <1-10>, "note": "<short>"}], "good": "<what the candidate did well>", "missing": "<what was missing or weak>", "suggestion": "<a concise stronger model answer>"}`,
   ]
     .filter(Boolean)
     .join('\n');

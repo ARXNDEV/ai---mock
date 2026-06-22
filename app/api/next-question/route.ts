@@ -12,6 +12,7 @@ interface Body {
   difficulty: Difficulty;
   jd?: string;
   previousQuestions?: string[];
+  lastAnswer?: string;
 }
 
 export async function POST(request: Request) {
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       difficulty: body.difficulty,
       jd: body.jd ?? '',
       previousQuestions: body.previousQuestions ?? [],
+      lastAnswer: body.lastAnswer,
     });
 
     const completion = await getGroq().chat.completions.create({

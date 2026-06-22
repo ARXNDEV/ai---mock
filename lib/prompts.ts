@@ -7,8 +7,10 @@ export function buildQuestionPrompt(params: {
   difficulty: Difficulty;
   jd: string;
   previousQuestions: string[];
+  /** The candidate's most recent answer — lets the next question adapt to it. */
+  lastAnswer?: string;
 }): string {
-  const { role, difficulty, jd, previousQuestions } = params;
+  const { role, difficulty, jd, previousQuestions, lastAnswer } = params;
 
   const previous = previousQuestions.length
     ? previousQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')
@@ -18,6 +20,9 @@ export function buildQuestionPrompt(params: {
     `Generate ONE interview question for a ${DIFFICULTY_LABELS[difficulty]} ${ROLE_LABELS[role]} candidate.`,
     jd.trim() ? `\nJob description for context:\n"""\n${jd.trim()}\n"""` : '',
     `\nQuestions already asked (do NOT repeat or closely paraphrase any of these):\n${previous}`,
+    lastAnswer?.trim()
+      ? `\nThe candidate's previous answer was:\n"""\n${lastAnswer.trim()}\n"""\nAsk a question that follows on naturally — probe deeper into something they raised (or skated over), or pivot to a related area to test their breadth. Make it feel like a real interviewer reacting to what they just said.`
+      : '',
     `\nVary the question type across the interview — mix technical, behavioral, and situational questions.`,
     `Calibrate the difficulty to the ${DIFFICULTY_LABELS[difficulty]} level.`,
     `\nRespond with ONLY a JSON object, no markdown and no extra text, in exactly this shape:`,

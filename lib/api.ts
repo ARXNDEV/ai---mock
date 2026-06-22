@@ -20,6 +20,8 @@ export async function fetchNextQuestion(params: {
   difficulty: Difficulty;
   jd: string;
   previousQuestions: string[];
+  /** Optional: the candidate's last answer, so the next question can adapt to it. */
+  lastAnswer?: string;
 }): Promise<string> {
   const { question } = await postJson<{ question: string }>('/api/next-question', params);
   return question;

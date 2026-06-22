@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { AnswerRecord, InterviewConfig, Role, Difficulty } from '@/lib/types';
 import type { SessionQuestion } from '@/lib/database.types';
@@ -67,8 +67,10 @@ export default function InterviewApp({
   const [startError, setStartError] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState<string | null>(null);
+  // Holds the next (adaptive) question, prefetched while the user reads feedback.
+  const nextQuestionPromiseRef = useRef<Promise<string | null> | null>(null);
 
-  async function loadNextQuestion(cfg: InterviewConfig, previousQuestions: string[]) {
+  async function loadNextQuestion(cfg: InterviewConfig, previousQuestions: string[], lastAnswer?: string) {
     setAdvancing(true);
     setAdvanceError(null);
     try {
@@ -77,6 +79,7 @@ export default function InterviewApp({
         difficulty: cfg.difficulty,
         jd: cfg.jd,
         previousQuestions,
+        lastAnswer,
       });
       setAskedQuestions((prev) => [...prev, q]);
       setCurrentQuestion(q);
@@ -85,6 +88,21 @@ export default function InterviewApp({
     } finally {
       setAdvancing(false);
     }
+  }
+
+  // Kick off the next question as soon as an answer is scored, so advancing is
+  // instant. Best-effort: resolves to null on failure and handleNext re-fetches.
+  function handleAnswerEvaluated(transcript: string) {
+    if (!config || answers.length + 1 >= MAX_QUESTIONS) return;
+    nextQuestionPromiseRef.current = fetchNextQuestion({
+      role: config.role,
+      difficulty: config.difficulty,
+      jd: config.jd,
+      previousQuestions: askedQuestions,
+      lastAnswer: transcript,
+    })
+      .then((q) => q)
+      .catch(() => null);
   }
 
   async function handleStart(cfg: InterviewConfig) {
@@ -142,7 +160,29 @@ export default function InterviewApp({
       setPhase('summary');
       return;
     }
-    await loadNextQuestion(config, askedQuestions);
+
+    // Use the question prefetched during feedback if it's ready; else fetch now.
+    const prefetch = nextQuestionPromiseRef.current;
+    nextQuestionPromiseRef.current = null;
+    if (!prefetch) {
+      await loadNextQuestion(config, askedQuestions, record.transcript);
+      return;
+    }
+    setAdvancing(true);
+    setAdvanceError(null);
+    try {
+      const q = await prefetch;
+      if (q) {
+        setAskedQuestions((prev) => [...prev, q]);
+        setCurrentQuestion(q);
+      } else {
+        await loadNextQuestion(config, askedQuestions, record.transcript);
+      }
+    } catch {
+      await loadNextQuestion(config, askedQuestions, record.transcript);
+    } finally {
+      setAdvancing(false);
+    }
   }
 
   function handleRestart() {
@@ -233,6 +273,7 @@ export default function InterviewApp({
       totalQuestions={MAX_QUESTIONS}
       isLastQuestion={answers.length + 1 >= MAX_QUESTIONS}
       onNext={handleNext}
+      onAnswerEvaluated={handleAnswerEvaluated}
     />
   );
 }

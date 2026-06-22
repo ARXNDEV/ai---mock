@@ -10,6 +10,7 @@ import { useSpeechCaptions } from '@/hooks/useSpeechCaptions';
 import { transcribeAudio, evaluateAnswer } from '@/lib/api';
 import { speak, cancelSpeech } from '@/lib/speech';
 import { haptic } from '@/lib/haptics';
+import { analyzeDelivery } from '@/lib/speechMetrics';
 import { ScoreRing } from './interview/ScoreRing';
 import { Waveform } from './interview/Waveform';
 import { Typewriter } from './motion/Typewriter';
@@ -46,6 +47,7 @@ export default function InterviewScreen({
   totalQuestions,
   isLastQuestion,
   onNext,
+  onAnswerEvaluated,
 }: {
   config: InterviewConfig;
   question: string;
@@ -53,6 +55,7 @@ export default function InterviewScreen({
   totalQuestions: number;
   isLastQuestion: boolean;
   onNext: (record: AnswerRecord) => void;
+  onAnswerEvaluated?: (transcript: string) => void;
 }) {
   const recorder = useRecorder();
   const captions = useSpeechCaptions();
@@ -157,6 +160,7 @@ export default function InterviewScreen({
       const fb = await evaluateAnswer({ role: config.role, jd: config.jd, question, transcript });
       setFeedback(fb);
       setPhase('feedback');
+      onAnswerEvaluated?.(transcript); // let the parent prefetch the next question
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Evaluation failed.');
       setPhase('review');
@@ -164,6 +168,8 @@ export default function InterviewScreen({
   }
 
   const recording = recorder.isRecording;
+  // Delivery stats only make sense for a spoken answer (we have a recording time).
+  const delivery = feedback && elapsed > 2 ? analyzeDelivery(transcript, elapsed) : null;
   const pct = Math.round((questionNumber / totalQuestions) * 100);
   const showTranscriptField = phase === 'review' || phase === 'evaluating' || phase === 'feedback';
   const statusText = aiSpeaking
@@ -327,6 +333,57 @@ export default function InterviewScreen({
                 </ul>
               </div>
               <Suggest text={feedback.suggestion} />
+              {delivery && (
+                <div className="fb-block" style={{ paddingTop: 20, borderTop: '1px solid rgba(240,236,227,0.15)' }}>
+                  <div className="fb-h" style={{ color: 'rgba(240,236,227,0.7)' }}>
+                    <span className="dot" style={{ background: 'rgba(240,236,227,0.5)' }} /> Delivery
+                  </div>
+                  <div style={{ display: 'flex', gap: 28 }}>
+                    <div>
+                      <div className="serif" style={{ fontSize: 28, color: 'var(--paper)', lineHeight: 1 }}>
+                        {delivery.wpm}
+                        <span style={{ fontSize: 13, color: 'rgba(240,236,227,0.5)' }}> wpm</span>
+                      </div>
+                      <div
+                        className="mono"
+                        style={{
+                          fontSize: 9.5,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          marginTop: 5,
+                          color: delivery.paceLabel === 'good' ? '#6cc79a' : '#e0a94b',
+                        }}
+                      >
+                        {delivery.paceLabel === 'good'
+                          ? 'Good pace'
+                          : delivery.paceLabel === 'slow'
+                            ? 'A bit slow'
+                            : 'A bit fast'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="serif" style={{ fontSize: 28, color: 'var(--paper)', lineHeight: 1 }}>
+                        {delivery.fillerCount}
+                      </div>
+                      <div
+                        className="mono"
+                        style={{
+                          fontSize: 9.5,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          marginTop: 5,
+                          color: 'rgba(240,236,227,0.5)',
+                        }}
+                      >
+                        Filler{delivery.fillerCount === 1 ? '' : 's'}
+                        {delivery.topFillers.length
+                          ? ` · ${delivery.topFillers.map((f) => `"${f.word}"`).join(', ')}`
+                          : ''}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div

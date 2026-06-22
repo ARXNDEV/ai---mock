@@ -48,6 +48,26 @@ export function buildQuestionPrompt(params: {
     .join('\n');
 }
 
+/** Build a prompt for a live follow-up that drills into the candidate's answer. */
+export function buildFollowUpPrompt(params: {
+  role: Role;
+  jd: string;
+  question: string;
+  transcript: string;
+}): string {
+  const { role, jd, question, transcript } = params;
+  return [
+    `You are interviewing a ${ROLE_LABELS[role]} candidate and reacting in real time.`,
+    jd.trim() ? `\nJob description for context:\n"""\n${jd.trim()}\n"""` : '',
+    `\nThey were asked:\n"""\n${question}\n"""`,
+    `\nThey answered:\n"""\n${transcript}\n"""`,
+    `\nAsk ONE sharp follow-up that drills into their answer — probe a specific claim, ask for a concrete example, a trade-off they skipped, or an edge case. Keep it short and conversational, like a real interviewer reacting in the moment.`,
+    `\nReturn ONLY a JSON object, no markdown: {"question": "<the follow-up question>"}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 /** Build the user prompt that asks Claude to evaluate a transcribed answer. */
 export function buildEvaluationPrompt(params: {
   role: Role;

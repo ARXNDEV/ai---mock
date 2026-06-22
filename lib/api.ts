@@ -29,6 +29,16 @@ export async function fetchNextQuestion(params: {
   return question;
 }
 
+export async function fetchFollowUp(params: {
+  role: Role;
+  jd: string;
+  question: string;
+  transcript: string;
+}): Promise<string> {
+  const { question } = await postJson<{ question: string }>('/api/follow-up', params);
+  return question;
+}
+
 export async function evaluateAnswer(params: {
   role: Role;
   jd: string;

@@ -6,7 +6,7 @@ import type { AnswerRecord, Feedback, InterviewConfig } from '@/lib/types';
 import { ROLE_LABELS, DIFFICULTY_LABELS } from '@/lib/constants';
 import { useRecorder } from '@/hooks/useRecorder';
 import { useSpeechCaptions } from '@/hooks/useSpeechCaptions';
-import { transcribeAudio, evaluateAnswer } from '@/lib/api';
+import { transcribeAudio, evaluateAnswer, fetchFollowUp } from '@/lib/api';
 import { speak, cancelSpeech } from '@/lib/speech';
 import { haptic } from '@/lib/haptics';
 import { analyzeDelivery } from '@/lib/speechMetrics';
@@ -74,6 +74,10 @@ export default function InterviewScreen({
       return false;
     }
   });
+  const [activeQuestion, setActiveQuestion] = useState(question);
+  const [isFollowUp, setIsFollowUp] = useState(false);
+  const [mainRecord, setMainRecord] = useState<AnswerRecord | null>(null);
+  const [loadingFollowUp, setLoadingFollowUp] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spokenRef = useRef(false);
 
@@ -168,6 +172,38 @@ export default function InterviewScreen({
     }
   }
 
+  // Drill into the just-given answer with a live follow-up. The original answer
+  // is kept as the counted/saved record; the follow-up is bonus coaching.
+  async function handleAskFollowUp() {
+    if (!feedback) return;
+    setMainRecord({ question, transcript, feedback });
+    setLoadingFollowUp(true);
+    setError(null);
+    try {
+      const fq = await fetchFollowUp({ role: config.role, jd: config.jd, question, transcript });
+      cancelSpeech();
+      setIsFollowUp(true);
+      setActiveQuestion(fq);
+      setTranscript('');
+      setFeedback(null);
+      setElapsed(0);
+      recorder.reset();
+      captions.reset();
+      setPhase('idle');
+      if (!muted) speak(fq, { onStart: () => setAiSpeaking(true), onEnd: () => setAiSpeaking(false) });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load a follow-up.');
+    } finally {
+      setLoadingFollowUp(false);
+    }
+  }
+
+  function recordToSave(): AnswerRecord | null {
+    if (isFollowUp && mainRecord) return mainRecord;
+    if (feedback) return { question, transcript, feedback };
+    return null;
+  }
+
   const recording = recorder.isRecording;
   // Delivery stats only make sense for a spoken answer (we have a recording time).
   const delivery = feedback && elapsed > 2 ? analyzeDelivery(transcript, elapsed) : null;
@@ -246,9 +282,9 @@ export default function InterviewScreen({
           </div>
 
           <div className="q-card">
-            <div className="q-tag">Current Question</div>
+            <div className="q-tag">{isFollowUp ? '↪ Follow-up' : 'Current Question'}</div>
             <div className="q-text">
-              <Typewriter text={question} />
+              <Typewriter text={activeQuestion} />
             </div>
             <div className="q-hint">
               <span className="qh-mark">✦</span> Take a moment to structure your answer — explain the{' '}
@@ -432,12 +468,22 @@ export default function InterviewScreen({
             </button>
           )}
           {phase === 'feedback' && feedback && (
-            <button
-              className="btn btn-paper"
-              onClick={() => onNext({ question, transcript, feedback })}
-            >
-              {isLastQuestion ? 'See Summary →' : 'Next Question →'}
-            </button>
+            <>
+              {!isFollowUp && (
+                <button className="btn btn-line" onClick={handleAskFollowUp} disabled={loadingFollowUp}>
+                  {loadingFollowUp ? 'Loading follow-up…' : '↪ Ask a follow-up'}
+                </button>
+              )}
+              <button
+                className="btn btn-paper"
+                onClick={() => {
+                  const rec = recordToSave();
+                  if (rec) onNext(rec);
+                }}
+              >
+                {isLastQuestion ? 'See Summary →' : 'Next Question →'}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -474,9 +520,7 @@ export default function InterviewScreen({
         <button
           type="button"
           className="btn btn-line"
-          onClick={() =>
-            onEnd?.(phase === 'feedback' && feedback ? { question, transcript, feedback } : null)
-          }
+          onClick={() => onEnd?.(recordToSave())}
         >
           End &amp; See Summary
         </button>

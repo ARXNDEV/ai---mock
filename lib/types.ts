@@ -31,3 +31,21 @@ export interface ResumeAnalysis {
   gaps: string[];
   suggestions: string[];
 }
+
+export interface TailoredExperience {
+  title: string;
+  org: string;
+  period: string;
+  bullets: string[];
+}
+
+export interface TailoredResume {
+  name: string;
+  headline: string; // target role / title line
+  summary: string;
+  skills: string[];
+  experience: TailoredExperience[];
+  education: string[];
+  atsKeywords: string[]; // JD keywords now covered
+  changes: string[]; // what was improved / tailored
+}

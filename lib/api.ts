@@ -1,6 +1,6 @@
 'use client';
 
-import type { Feedback, Role, Difficulty, ResumeAnalysis } from './types';
+import type { Feedback, Role, Difficulty, ResumeAnalysis, TailoredResume } from './types';
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -41,6 +41,13 @@ export async function analyzeResume(params: {
   jd: string;
 }): Promise<{ analysis: ResumeAnalysis; remaining: number | null }> {
   return postJson<{ analysis: ResumeAnalysis; remaining: number | null }>('/api/resume', params);
+}
+
+export async function buildTailoredResume(params: {
+  resume: string;
+  jd: string;
+}): Promise<{ resume: TailoredResume; remaining: number | null }> {
+  return postJson<{ resume: TailoredResume; remaining: number | null }>('/api/resume/build', params);
 }
 
 export async function transcribeAudio(blob: Blob): Promise<string> {

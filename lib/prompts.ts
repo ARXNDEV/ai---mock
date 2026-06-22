@@ -71,3 +71,31 @@ export function buildResumePrompt(params: { resume: string; jd: string }): strin
     .filter(Boolean)
     .join('\n');
 }
+
+/**
+ * Build the prompt that rewrites a résumé into the strongest, ATS-optimized
+ * version tailored to a target job. Hard rule: reframe only real experience —
+ * never invent roles, employers, dates, degrees, or fake metrics.
+ */
+export function buildTailoredResumePrompt(params: { resume: string; jd: string }): string {
+  const { resume, jd } = params;
+
+  return [
+    `You are a world-class résumé writer and ATS optimization expert. Rewrite the candidate's résumé into the strongest possible version tailored to the target job.`,
+    `\nCandidate's current résumé:\n"""\n${resume.trim()}\n"""`,
+    jd.trim()
+      ? `\nTarget job description:\n"""\n${jd.trim()}\n"""`
+      : `\n(No job description provided — optimize for the candidate's apparent target role.)`,
+    `\nRules — follow ALL of them:`,
+    `1. INTEGRITY: Only reframe experience, skills, and achievements that are actually present or clearly implied in the résumé. NEVER invent employers, job titles, dates, degrees, certifications, or fabricated numbers. If the original lacks a metric, keep the bullet qualitative — do not make up statistics.`,
+    `2. Rewrite each experience bullet to lead with a strong action verb and surface impact/outcome; preserve any real numbers and keep them accurate.`,
+    `3. Mirror the job description's terminology and hard skills wherever the candidate genuinely has them, so it passes ATS keyword screening.`,
+    `4. Write a sharp 2-3 sentence professional summary targeted at this exact role.`,
+    `5. Keep it concise, professional, and ATS-safe (plain text, no tables/graphics).`,
+    `\nReturn ONLY a JSON object, no markdown and no extra text, in exactly this shape:`,
+    `{"name": "<candidate name if present, else empty>", "headline": "<target role title line>", "summary": "<2-3 sentence tailored summary>", "skills": ["<skill>", ...], "experience": [{"title": "<role>", "org": "<employer>", "period": "<dates if known, else empty>", "bullets": ["<impact bullet>", ...]}], "education": ["<degree, institution, year if known>", ...], "atsKeywords": ["<JD keyword the résumé now covers>", ...], "changes": ["<key improvement you made>", ...]}`,
+    `Provide 6-12 skills, 3-6 bullets per role, and 3-6 items in atsKeywords and changes.`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}

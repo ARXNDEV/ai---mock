@@ -23,7 +23,12 @@ const mono = Space_Mono({
   display: 'swap',
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: 'Intervue.ai — Ace your next interview with AI',
   description:
     'Practice with an intelligent AI interviewer, get instant feedback, and land your dream job with confidence.',

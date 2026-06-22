@@ -185,7 +185,12 @@ export default function InterviewApp({
         <TopBar />
         <div style={{ flex: 1, padding: '32px 24px' }}>
           <div style={{ maxWidth: 680, margin: '0 auto' }}>
-            <SummaryScreen answers={answers} onRestart={handleRestart} />
+            <SummaryScreen
+              answers={answers}
+              onRestart={handleRestart}
+              role={config?.role}
+              difficulty={config?.difficulty}
+            />
           </div>
         </div>
       </div>

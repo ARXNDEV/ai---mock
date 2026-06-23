@@ -4,6 +4,7 @@ import { buildFollowUpPrompt } from '@/lib/prompts';
 import { extractJson } from '@/lib/json';
 import { getUser } from '@/lib/auth';
 import { spendInterviewCall } from '@/lib/entitlements';
+import { rateLimit, AI_LIMITS } from '@/lib/ratelimit';
 import type { Role } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -19,6 +20,9 @@ export async function POST(request: Request) {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await rateLimit(request, user.id, { name: 'follow-up', ...AI_LIMITS['follow-up'] });
+    if (limited) return limited;
 
     const spend = await spendInterviewCall(request, user.id);
     if (!spend.ok) return NextResponse.json({ error: spend.error }, { status: spend.status });

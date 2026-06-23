@@ -3,6 +3,7 @@ import { toFile } from 'openai';
 import { getGroq, GROQ_WHISPER_MODEL } from '@/lib/groq';
 import { getUser } from '@/lib/auth';
 import { spendInterviewCall } from '@/lib/entitlements';
+import { rateLimit, AI_LIMITS } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 // Transcription of a short answer comfortably fits well under this ceiling.
@@ -12,6 +13,9 @@ export async function POST(request: Request) {
   try {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const limited = await rateLimit(request, user.id, { name: 'transcribe', ...AI_LIMITS.transcribe });
+    if (limited) return limited;
 
     const spend = await spendInterviewCall(request, user.id);
     if (!spend.ok) return NextResponse.json({ error: spend.error }, { status: spend.status });

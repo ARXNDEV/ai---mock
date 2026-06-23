@@ -73,6 +73,49 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- rate_limits: fixed-window counters (Task 3). Service-role only.
+-- ---------------------------------------------------------------------------
+create table if not exists public.rate_limits (
+  key text primary key,
+  window_start timestamptz not null default now(),
+  count integer not null default 0
+);
+alter table public.rate_limits enable row level security;
+-- No policies → only the service role touches it.
+
+-- Atomic fixed-window hit: increments (or rolls the window) and reports whether
+-- this hit is allowed, plus remaining + seconds until the window resets.
+create or replace function public.rate_limit_hit(p_key text, p_max int, p_window_sec int)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  new_count int;
+  win_start timestamptz;
+begin
+  insert into public.rate_limits (key, window_start, count)
+    values (p_key, now_ts, 1)
+    on conflict (key) do update set
+      count = case
+        when public.rate_limits.window_start < now_ts - make_interval(secs => p_window_sec) then 1
+        else public.rate_limits.count + 1 end,
+      window_start = case
+        when public.rate_limits.window_start < now_ts - make_interval(secs => p_window_sec) then now_ts
+        else public.rate_limits.window_start end
+    returning count, window_start into new_count, win_start;
+
+  return jsonb_build_object(
+    'allowed', new_count <= p_max,
+    'remaining', greatest(0, p_max - new_count),
+    'retryAfter', greatest(0, ceil(extract(epoch from (win_start + make_interval(secs => p_window_sec) - now_ts)))::int)
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- sessions: one row per completed mock interview.
 -- ---------------------------------------------------------------------------
 create table if not exists public.sessions (

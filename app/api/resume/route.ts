@@ -6,6 +6,7 @@ import { getProfile } from '@/lib/profile';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FREE_MONTHLY_RESUMES } from '@/lib/plans';
 import { isProActive } from '@/lib/entitlements';
+import { rateLimit, AI_LIMITS } from '@/lib/ratelimit';
 import type { ResumeAnalysis } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
     const data = await getProfile();
     if (!data) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { profile, userId } = data;
+    const limited = await rateLimit(request, userId, { name: 'resume', ...AI_LIMITS.resume });
+    if (limited) return limited;
     const isPro = isProActive(profile);
     const used = profile.resumes_used_this_month ?? 0;
 

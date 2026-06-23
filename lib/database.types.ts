@@ -103,6 +103,12 @@ export type Database = {
         };
         Relationships: [];
       };
+      rate_limits: {
+        Row: { key: string; window_start: string; count: number };
+        Insert: { key: string; window_start?: string; count?: number };
+        Update: { key?: string; window_start?: string; count?: number };
+        Relationships: [];
+      };
       sessions: {
         Row: SessionRow;
         Insert: {
@@ -131,6 +137,10 @@ export type Database = {
       use_interview_session: {
         Args: { p_session: string; p_user: string };
         Returns: number | null;
+      };
+      rate_limit_hit: {
+        Args: { p_key: string; p_max: number; p_window_sec: number };
+        Returns: { allowed: boolean; remaining: number; retryAfter: number };
       };
     };
     Enums: { [_ in never]: never };

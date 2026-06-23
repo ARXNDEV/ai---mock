@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlanKey, proUntilFor, type PlanKey } from '@/lib/plans';
 
 export const runtime = 'nodejs';
 
@@ -31,9 +32,15 @@ export async function POST(request: Request) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId ?? session.client_reference_id ?? null;
+    const planRaw = session.metadata?.plan;
+    const plan: PlanKey = isPlanKey(planRaw) ? planRaw : 'pro_monthly';
     if (userId) {
       const admin = createAdminClient();
-      const { error } = await admin.from('profiles').update({ plan: 'pro' }).eq('id', userId);
+      // Time-boxed pass: grant Pro until now + (1 month | 1 year).
+      const { error } = await admin
+        .from('profiles')
+        .update({ plan: 'pro', pro_until: proUntilFor(plan) })
+        .eq('id', userId);
       if (error) console.error('[stripe webhook] upgrade failed', error);
     }
   }

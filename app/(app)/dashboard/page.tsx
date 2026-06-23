@@ -3,6 +3,7 @@ import { getProfile } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FREE_MONTHLY_INTERVIEWS } from '@/lib/plans';
+import { isProActive } from '@/lib/entitlements';
 import { referralCodeFor } from '@/lib/referral';
 import type { SessionRow } from '@/lib/database.types';
 import type { Role, Difficulty } from '@/lib/types';
@@ -74,7 +75,7 @@ export default async function DashboardPage() {
     : 0;
   const streak = computeStreak(sessions.map((s) => s.created_at));
 
-  const isPro = profile.plan === 'pro';
+  const isPro = isProActive(profile);
   const bonus = profile.bonus_interviews ?? 0;
   const cap = FREE_MONTHLY_INTERVIEWS + bonus;
   const remaining = Math.max(0, cap - profile.interviews_used_this_month);
@@ -97,7 +98,7 @@ export default async function DashboardPage() {
   )}`;
 
   return (
-    <DashShell email={email ?? ''} plan={profile.plan}>
+    <DashShell email={email ?? ''} plan={isPro ? 'pro' : 'free'}>
       <div className="dash-head">
         <div>
           <h1 style={{ textTransform: 'capitalize' }}>

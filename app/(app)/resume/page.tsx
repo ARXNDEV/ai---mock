@@ -1,6 +1,7 @@
 import { FileText } from 'lucide-react';
 import { getProfile } from '@/lib/profile';
 import { FREE_MONTHLY_RESUMES } from '@/lib/plans';
+import { isProActive } from '@/lib/entitlements';
 import { DashShell } from '@/components/app/DashShell';
 import { ResumeAnalyzer } from '@/components/resume/ResumeAnalyzer';
 
@@ -10,11 +11,11 @@ export default async function ResumePage() {
   const data = await getProfile();
   if (!data) return null;
   const { profile, email } = data;
-  const isPro = profile.plan === 'pro';
+  const isPro = isProActive(profile);
   const remaining = isPro ? null : Math.max(0, FREE_MONTHLY_RESUMES - (profile.resumes_used_this_month ?? 0));
 
   return (
-    <DashShell email={email ?? ''} plan={profile.plan}>
+    <DashShell email={email ?? ''} plan={isPro ? 'pro' : 'free'}>
       <div className="dash-head">
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

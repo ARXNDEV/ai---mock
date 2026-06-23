@@ -1,5 +1,6 @@
 import { getProfile } from '@/lib/profile';
 import { FREE_MONTHLY_INTERVIEWS } from '@/lib/plans';
+import { isProActive } from '@/lib/entitlements';
 import type { Role, Difficulty } from '@/lib/types';
 import InterviewApp from '@/components/interview/InterviewApp';
 import { UpgradeGate } from '@/components/interview/UpgradeGate';
@@ -17,7 +18,7 @@ export default async function InterviewPage({
   const data = await getProfile();
   if (!data) return null;
 
-  const isPro = data.profile.plan === 'pro';
+  const isPro = isProActive(data.profile);
   // Free allowance includes any referral bonus (matches the consume route).
   const cap = FREE_MONTHLY_INTERVIEWS + (data.profile.bonus_interviews ?? 0);
   const remaining = isPro ? null : Math.max(0, cap - data.profile.interviews_used_this_month);

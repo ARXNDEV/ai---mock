@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getUser } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlanKey, proUntilFor, type PlanKey } from '@/lib/plans';
 
 export const runtime = 'nodejs';
 
@@ -9,12 +10,13 @@ export async function POST(request: Request) {
   const user = await getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = (await request
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan: planRaw } = (await request
     .json()
     .catch(() => ({}))) as {
     razorpay_order_id?: string;
     razorpay_payment_id?: string;
     razorpay_signature?: string;
+    plan?: string;
   };
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -38,8 +40,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid payment signature.' }, { status: 400 });
   }
 
+  const plan: PlanKey = isPlanKey(planRaw) ? planRaw : 'pro_monthly';
   const admin = createAdminClient();
-  const { error } = await admin.from('profiles').update({ plan: 'pro' }).eq('id', user.id);
+  // Time-boxed pass. (Task 6 binds the order to the user + verifies the amount.)
+  const { error } = await admin
+    .from('profiles')
+    .update({ plan: 'pro', pro_until: proUntilFor(plan) })
+    .eq('id', user.id);
   if (error) {
     console.error('[razorpay verify] upgrade failed', error);
     return NextResponse.json({ error: 'Failed to upgrade plan.' }, { status: 500 });

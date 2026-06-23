@@ -32,3 +32,11 @@ export const USD_PLANS: Record<PlanKey, UsdPlan> = {
 export function isPlanKey(value: unknown): value is PlanKey {
   return value === 'pro_monthly' || value === 'pro_annual';
 }
+
+/** Time-boxed pass expiry: 1 month for monthly, 1 year for annual, from now. */
+export function proUntilFor(plan: PlanKey): string {
+  const d = new Date();
+  if (plan === 'pro_annual') d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+}

@@ -1,11 +1,11 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { AnswerRecord, InterviewConfig, Role, Difficulty } from '@/lib/types';
 import type { SessionQuestion } from '@/lib/database.types';
-import { MAX_QUESTIONS } from '@/lib/constants';
+import { MAX_QUESTIONS, ROLE_LABELS } from '@/lib/constants';
 import { fetchNextQuestion, consumeInterviewCredit, saveSession } from '@/lib/api';
 import { Logo } from '@/components/brand/logo';
 import SetupScreen from '@/components/SetupScreen';
@@ -21,6 +21,18 @@ type Phase = 'setup' | 'intro' | 'interview' | 'closing' | 'summary';
 // AI's first generated question then adapts to the candidate's background.
 const WARMUP_QUESTION =
   "To start, tell me a bit about yourself — your background, and what you're looking for in your next role.";
+
+// Save & resume an in-progress interview across refreshes.
+const STATE_KEY = 'intervue:interview';
+const RESUME_TTL = 24 * 60 * 60 * 1000; // 24h
+
+interface Snapshot {
+  config: InterviewConfig;
+  askedQuestions: string[];
+  currentQuestion: string;
+  answers: AnswerRecord[];
+  savedAt: number;
+}
 
 function TopBar() {
   return (
@@ -73,6 +85,7 @@ export default function InterviewApp({
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [credits, setCredits] = useState<number | null>(remaining);
   const [limitReached, setLimitReached] = useState(false);
+  const [resumable, setResumable] = useState<Snapshot | null>(null);
 
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
@@ -80,6 +93,59 @@ export default function InterviewApp({
   const [advanceError, setAdvanceError] = useState<string | null>(null);
   // Holds the next (adaptive) question, prefetched while the user reads feedback.
   const nextQuestionPromiseRef = useRef<Promise<string | null> | null>(null);
+
+  function clearSaved() {
+    try {
+      localStorage.removeItem(STATE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // On mount, offer to resume an in-progress interview saved on this device.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      if (!raw) return;
+      const snap = JSON.parse(raw) as Snapshot;
+      if (snap?.config && Array.isArray(snap.answers) && Date.now() - (snap.savedAt || 0) < RESUME_TTL) {
+        setResumable(snap);
+      } else {
+        clearSaved();
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Persist the in-progress interview so a refresh doesn't lose it.
+  useEffect(() => {
+    if ((phase === 'intro' || phase === 'interview') && config) {
+      try {
+        localStorage.setItem(
+          STATE_KEY,
+          JSON.stringify({ config, askedQuestions, currentQuestion, answers, savedAt: Date.now() }),
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [phase, config, askedQuestions, currentQuestion, answers]);
+
+  function handleResume() {
+    if (!resumable) return;
+    setConfig(resumable.config);
+    setAskedQuestions(resumable.askedQuestions || []);
+    setCurrentQuestion(resumable.currentQuestion || '');
+    setAnswers(resumable.answers || []);
+    setResumable(null);
+    setPhase('interview');
+  }
+
+  function discardResume() {
+    clearSaved();
+    setResumable(null);
+  }
 
   async function loadNextQuestion(cfg: InterviewConfig, previousQuestions: string[], lastAnswer?: string) {
     setAdvancing(true);
@@ -170,6 +236,7 @@ export default function InterviewApp({
   // leave. This means stopping early still counts and shows the share option.
   async function handleEndEarly(currentRecord: AnswerRecord | null) {
     const all = currentRecord ? [...answers, currentRecord] : answers;
+    clearSaved();
     if (config && all.length > 0) {
       setAnswers(all);
       await persistSession(all, config);
@@ -183,6 +250,7 @@ export default function InterviewApp({
     const updated = [...answers, record];
     setAnswers(updated);
     if (!config || updated.length >= config.questionCount) {
+      clearSaved(); // interview finished — no longer resumable
       if (config) {
         void persistSession(updated, config); // save in the background while the closing plays
         setPhase('closing');
@@ -217,6 +285,7 @@ export default function InterviewApp({
   }
 
   function handleRestart() {
+    clearSaved();
     setPhase('setup');
     setConfig(null);
     setAskedQuestions([]);
@@ -237,15 +306,40 @@ export default function InterviewApp({
   if (phase === 'setup') {
     return (
       <Shell>
-        <SetupScreen
-          onStart={handleStart}
-          loading={starting}
-          error={startError}
-          remaining={credits}
-          isPro={isPro}
-          initialRole={initialRole}
-          initialDifficulty={initialDifficulty}
-        />
+        <div style={{ width: '100%', maxWidth: 560 }}>
+          {resumable && (
+            <div
+              className="feature"
+              style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}
+            >
+              <div>
+                <div className="serif" style={{ fontSize: 18 }}>
+                  Resume your interview?
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 4 }}>
+                  {resumable.answers.length} answered · {ROLE_LABELS[resumable.config.role]}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-accent btn-sm" onClick={handleResume}>
+                  Resume →
+                </button>
+                <button type="button" className="btn btn-line btn-sm" onClick={discardResume}>
+                  Start fresh
+                </button>
+              </div>
+            </div>
+          )}
+          <SetupScreen
+            onStart={handleStart}
+            loading={starting}
+            error={startError}
+            remaining={credits}
+            isPro={isPro}
+            initialRole={initialRole}
+            initialDifficulty={initialDifficulty}
+          />
+        </div>
       </Shell>
     );
   }

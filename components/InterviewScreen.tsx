@@ -83,6 +83,8 @@ export default function InterviewScreen({
   const [loadingFollowUp, setLoadingFollowUp] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spokenRef = useRef(false);
+  const lastBlobRef = useRef<Blob | null>(null);
+  const [transcribeFailed, setTranscribeFailed] = useState(false);
 
   // Speak the question once on mount (the AI interviewer asking it aloud).
   useEffect(() => {
@@ -149,15 +151,18 @@ export default function InterviewScreen({
   }, [recorder.error]);
 
   async function handleTranscribe(blob: Blob) {
+    lastBlobRef.current = blob;
     setPhase('transcribing');
     setError(null);
     try {
       const text = await transcribeAudio(blob);
       setTranscript(text);
+      setTranscribeFailed(false);
       setPhase('review');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Transcription failed.');
-      recorder.reset();
+      setTranscribeFailed(true);
+      recorder.reset(); // clear the blob so the auto-transcribe effect can't loop
       setPhase('idle');
     }
   }
@@ -408,9 +413,23 @@ export default function InterviewScreen({
           </div>
 
           {error && (
-            <p className="mono" style={{ color: 'var(--accent)', fontSize: 13 }}>
-              {error}
-            </p>
+            <div>
+              <p className="mono" style={{ color: 'var(--accent)', fontSize: 13 }}>
+                {error}
+              </p>
+              {transcribeFailed && lastBlobRef.current && (
+                <button
+                  type="button"
+                  className="btn btn-line btn-sm"
+                  style={{ marginTop: 10 }}
+                  onClick={() => {
+                    if (lastBlobRef.current) void handleTranscribe(lastBlobRef.current);
+                  }}
+                >
+                  ↻ Retry transcription
+                </button>
+              )}
+            </div>
           )}
         </div>
 

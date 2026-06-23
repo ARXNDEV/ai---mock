@@ -324,8 +324,15 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id)
-  values (new.id)
+  -- Set referral_code + reset_date at creation so getProfile never writes on a
+  -- normal read (Task 9). referral_code mirrors referralCodeFor() in lib/referral.ts:
+  -- the first 8 hex chars of the uuid, uppercased.
+  insert into public.profiles (id, referral_code, reset_date)
+  values (
+    new.id,
+    upper(substr(replace(new.id::text, '-', ''), 1, 8)),
+    now() + interval '1 month'
+  )
   on conflict (id) do nothing;
   return new;
 end;

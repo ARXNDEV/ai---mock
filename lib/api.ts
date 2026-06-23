@@ -2,15 +2,33 @@
 
 import type { Feedback, Role, Difficulty, InterviewFocus, ResumeAnalysis, TailoredResume } from './types';
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
+// Interview-session token issued by /api/interview/consume; the billable AI
+// routes require it. Held for the duration of the single-page interview flow.
+let interviewToken: string | null = null;
+export function setInterviewToken(token: string | null): void {
+  interviewToken = token;
+}
+function interviewHeaders(): Record<string, string> {
+  return interviewToken ? { 'x-interview-token': interviewToken } : {};
+}
+
+function describeError(status: number, data: { error?: string; retryAfter?: number }): string {
+  if (status === 429) {
+    const wait = data.retryAfter ? ` Try again in ${data.retryAfter}s.` : '';
+    return `${data.error || 'Too many requests.'}${wait}`;
+  }
+  return data.error || `Request failed (${status}).`;
+}
+
+async function postJson<T>(url: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error || `Request failed (${res.status}).`);
+    throw new Error(describeError(res.status, data as { error?: string; retryAfter?: number }));
   }
   return data as T;
 }
@@ -25,7 +43,7 @@ export async function fetchNextQuestion(params: {
   focus?: InterviewFocus;
   resume?: string;
 }): Promise<string> {
-  const { question } = await postJson<{ question: string }>('/api/next-question', params);
+  const { question } = await postJson<{ question: string }>('/api/next-question', params, interviewHeaders());
   return question;
 }
 
@@ -35,7 +53,7 @@ export async function fetchFollowUp(params: {
   question: string;
   transcript: string;
 }): Promise<string> {
-  const { question } = await postJson<{ question: string }>('/api/follow-up', params);
+  const { question } = await postJson<{ question: string }>('/api/follow-up', params, interviewHeaders());
   return question;
 }
 
@@ -47,7 +65,7 @@ export async function evaluateAnswer(params: {
   mode?: 'voice' | 'code';
   language?: string;
 }): Promise<Feedback> {
-  return postJson<Feedback>('/api/evaluate', params);
+  return postJson<Feedback>('/api/evaluate', params, interviewHeaders());
 }
 
 export async function analyzeResume(params: {
@@ -69,30 +87,39 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
   const ext = blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm';
   form.append('audio', blob, `answer.${ext}`);
 
-  const res = await fetch('/api/transcribe', { method: 'POST', body: form });
+  const res = await fetch('/api/transcribe', { method: 'POST', body: form, headers: interviewHeaders() });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error || `Transcription failed (${res.status}).`);
+    throw new Error(describeError(res.status, data as { error?: string; retryAfter?: number }));
   }
   return (data as { transcript: string }).transcript;
 }
 
-/** Consume one interview credit (free plan) before starting. Returns ok:false at the limit. */
-export async function consumeInterviewCredit(): Promise<{
+/**
+ * Reserve an interview credit + session token before starting. Returns
+ * ok:false at the monthly limit. The returned token must be registered via
+ * setInterviewToken() so the billable AI routes accept subsequent calls.
+ */
+export async function consumeInterviewCredit(questionCount?: number): Promise<{
   ok: boolean;
   remaining: number | null;
   plan: string;
+  token?: string;
   error?: string;
 }> {
-  const res = await fetch('/api/interview/consume', { method: 'POST' });
+  const res = await fetch('/api/interview/consume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ questionCount }),
+  });
   const data = await res.json().catch(() => ({}));
   if (res.status === 403) {
     return { ok: false, remaining: data.remaining ?? 0, plan: data.plan ?? 'free', error: data.error };
   }
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error || 'Could not start interview.');
+    throw new Error(describeError(res.status, data as { error?: string; retryAfter?: number }));
   }
-  return { ok: true, remaining: data.remaining ?? null, plan: data.plan ?? 'free' };
+  return { ok: true, remaining: data.remaining ?? null, plan: data.plan ?? 'free', token: data.token };
 }
 
 export async function claimReferral(code: string): Promise<{ ok: boolean; bonus?: number; reason?: string }> {

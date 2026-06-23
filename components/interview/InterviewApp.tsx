@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { AnswerRecord, InterviewConfig, Role, Difficulty } from '@/lib/types';
 import type { SessionQuestion } from '@/lib/database.types';
 import { MAX_QUESTIONS, ROLE_LABELS } from '@/lib/constants';
-import { fetchNextQuestion, consumeInterviewCredit, saveSession } from '@/lib/api';
+import { fetchNextQuestion, consumeInterviewCredit, saveSession, setInterviewToken } from '@/lib/api';
 import { Logo } from '@/components/brand/logo';
 import SetupScreen from '@/components/SetupScreen';
 import InterviewScreen from '@/components/InterviewScreen';
@@ -190,11 +190,12 @@ export default function InterviewApp({
     setStarting(true);
     setStartError(null);
     try {
-      const credit = await consumeInterviewCredit();
+      const credit = await consumeInterviewCredit(cfg.questionCount);
       if (!credit.ok) {
         setLimitReached(true);
         return;
       }
+      setInterviewToken(credit.token ?? null); // billable AI routes require this
       if (!isPro) setCredits(credit.remaining);
       // Open with the fixed warm-up (no AI call needed → instant start). The
       // first AI question is fetched after the warm-up answer, so it adapts.

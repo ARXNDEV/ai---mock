@@ -31,7 +31,16 @@ export type ProfileRow = {
   bonus_interviews: number;
   referral_code: string | null;
   referred_by: string | null;
+  pro_until: string | null;
   reset_date: string;
+  created_at: string;
+};
+
+export type InterviewSessionRow = {
+  id: string;
+  user_id: string;
+  calls_remaining: number;
+  expires_at: string;
   created_at: string;
 };
 
@@ -58,6 +67,7 @@ export type Database = {
           bonus_interviews?: number;
           referral_code?: string | null;
           referred_by?: string | null;
+          pro_until?: string | null;
           reset_date?: string;
           created_at?: string;
         };
@@ -69,7 +79,26 @@ export type Database = {
           bonus_interviews?: number;
           referral_code?: string | null;
           referred_by?: string | null;
+          pro_until?: string | null;
           reset_date?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      interview_sessions: {
+        Row: InterviewSessionRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          calls_remaining: number;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          calls_remaining?: number;
+          expires_at?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -98,7 +127,12 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      use_interview_session: {
+        Args: { p_session: string; p_user: string };
+        Returns: number | null;
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };

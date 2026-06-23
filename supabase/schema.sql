@@ -29,6 +29,49 @@ alter table public.profiles
 create unique index if not exists profiles_referral_code_key
   on public.profiles (referral_code);
 
+-- Time-boxed Pro (Task 2): Pro is "active" when plan='pro' AND
+-- (pro_until is null OR pro_until > now()). pro_until null = legacy/unbounded.
+alter table public.profiles
+  add column if not exists pro_until timestamptz;
+
+-- ---------------------------------------------------------------------------
+-- interview_sessions: a server-reserved budget of AI calls per started
+-- interview. consume issues a signed token bound to one of these rows; each
+-- billable AI call atomically decrements calls_remaining. Service-role only.
+-- ---------------------------------------------------------------------------
+create table if not exists public.interview_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  calls_remaining integer not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists interview_sessions_user_idx on public.interview_sessions (user_id);
+alter table public.interview_sessions enable row level security;
+-- No policies → only the service role can read/write these rows.
+
+-- Atomically spend one AI call from a session. Returns the remaining count, or
+-- NULL if the session is missing / not the user's / expired / exhausted.
+create or replace function public.use_interview_session(p_session uuid, p_user uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  remaining integer;
+begin
+  update public.interview_sessions
+    set calls_remaining = calls_remaining - 1
+    where id = p_session
+      and user_id = p_user
+      and calls_remaining > 0
+      and expires_at > now()
+    returning calls_remaining into remaining;
+  return remaining;
+end;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- sessions: one row per completed mock interview.
 -- ---------------------------------------------------------------------------

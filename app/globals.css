@@ -2181,6 +2181,36 @@ textarea:focus-visible {
   }
 }
 
+/* ---- print: results report only (Download report → Save as PDF) ---- */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .report,
+  .report * {
+    visibility: visible !important;
+  }
+  .report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
+  }
+  .report .no-print {
+    display: none !important;
+  }
+  .aurora,
+  .nav,
+  body::after {
+    display: none !important;
+  }
+  .feature {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

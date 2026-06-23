@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Share2, Check } from 'lucide-react';
+import { Share2, Check, Download } from 'lucide-react';
 import type { AnswerRecord, Role, Difficulty } from '@/lib/types';
+import { ROLE_LABELS, DIFFICULTY_LABELS } from '@/lib/constants';
 import { CountUp } from '@/components/motion/CountUp';
 import { fireConfetti } from '@/components/motion/confetti';
 
@@ -37,7 +38,25 @@ export default function SummaryScreen({
   const strengths = byScoreDesc.slice(0, 3).map((a) => a.feedback.good).filter(Boolean);
   const tips = byScoreAsc.slice(0, 3).map((a) => a.feedback.missing).filter(Boolean);
 
-  // Celebrate on results — a bigger burst for a stronger score.
+  // Average each rubric dimension across the whole interview.
+  const dimAverages = (() => {
+    const acc: Record<string, { sum: number; n: number }> = {};
+    for (const a of answers) {
+      for (const r of a.feedback.rubric ?? []) {
+        acc[r.dimension] = acc[r.dimension] || { sum: 0, n: 0 };
+        acc[r.dimension].sum += r.score;
+        acc[r.dimension].n += 1;
+      }
+    }
+    return Object.entries(acc).map(([dimension, { sum, n }]) => ({
+      dimension,
+      score: Math.round((sum / n) * 10) / 10,
+    }));
+  })();
+  const weakest = dimAverages.length
+    ? [...dimAverages].sort((a, b) => a.score - b.score)[0]
+    : null;
+
   useEffect(() => {
     fireConfetti({ count: 20, bursts: overall >= 8 ? 3 : 2 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -48,26 +67,21 @@ export default function SummaryScreen({
     if (role) params.set('role', role);
     if (difficulty) params.set('diff', difficulty);
     const url = `${window.location.origin}/share?${params.toString()}`;
-    const shareData = {
-      title: 'My Intervue.ai score',
-      text: `I scored ${overall}/10 on an AI mock interview.`,
-      url,
-    };
     try {
       if (navigator.share) {
-        await navigator.share(shareData);
+        await navigator.share({ title: 'My Intervue.ai score', text: `I scored ${overall}/10 on an AI mock interview.`, url });
       } else {
         await navigator.clipboard.writeText(url);
         setShared(true);
         setTimeout(() => setShared(false), 2000);
       }
     } catch {
-      /* user dismissed the share sheet — no-op */
+      /* dismissed */
     }
   }
 
   return (
-    <div>
+    <div className="report">
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div className="eyebrow" style={{ marginBottom: 12 }}>
           Interview complete
@@ -75,6 +89,11 @@ export default function SummaryScreen({
         <h1 className="serif" style={{ fontSize: 'clamp(34px,5vw,52px)', lineHeight: 1.02, letterSpacing: '-0.01em' }}>
           Here&apos;s how you did.
         </h1>
+        {role && difficulty && (
+          <div className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginTop: 10 }}>
+            {ROLE_LABELS[role]} · {DIFFICULTY_LABELS[difficulty]}
+          </div>
+        )}
       </div>
 
       <div className="feature" style={{ alignItems: 'center', textAlign: 'center', marginBottom: 22 }}>
@@ -90,6 +109,28 @@ export default function SummaryScreen({
         </div>
       </div>
 
+      {dimAverages.length > 0 && (
+        <div className="feature" style={{ marginBottom: 22 }}>
+          <h3 style={{ marginBottom: 16 }}>Performance by dimension</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {dimAverages.map((d) => (
+              <div key={d.dimension}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <span style={{ fontSize: 14, color: 'var(--ink)' }}>{d.dimension}</span>
+                  <span className="num" style={{ fontSize: 16, color: d.score >= 7 ? 'var(--green)' : 'var(--ochre)' }}>
+                    {d.score}
+                    <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>/10</span>
+                  </span>
+                </div>
+                <div style={{ height: 7, borderRadius: 4, background: 'var(--paper-deep)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${d.score * 10}%`, background: 'var(--accent-grad)', borderRadius: 4 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="feature" style={{ marginBottom: 22 }}>
         <h3 style={{ color: 'var(--green)', marginBottom: 14 }}>Strengths</h3>
         {strengths.length ? (
@@ -104,7 +145,12 @@ export default function SummaryScreen({
       </div>
 
       <div className="feature" style={{ marginBottom: 22 }}>
-        <h3 style={{ color: 'var(--ochre)', marginBottom: 14 }}>Top 3 improvement tips</h3>
+        <h3 style={{ color: 'var(--ochre)', marginBottom: 6 }}>Your action plan</h3>
+        {weakest && (
+          <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginBottom: 12 }}>
+            Your lowest dimension was <strong style={{ color: 'var(--ink)' }}>{weakest.dimension}</strong> ({weakest.score}/10) — focus here first.
+          </p>
+        )}
         {tips.length ? (
           <ol style={{ display: 'flex', flexDirection: 'column', gap: 10, listStyle: 'decimal', paddingLeft: 18, color: 'var(--ink-soft)', fontSize: 14.5 }}>
             {tips.map((t, i) => (
@@ -145,23 +191,25 @@ export default function SummaryScreen({
         </ul>
       </div>
 
-      <button
-        type="button"
-        className="btn btn-line"
-        style={{ width: '100%', marginBottom: 12 }}
-        onClick={handleShare}
-      >
-        {shared ? <Check width={18} height={18} /> : <Share2 width={18} height={18} />}
-        {shared ? 'Link copied!' : 'Share my score'}
-      </button>
+      <div className="no-print">
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <button type="button" className="btn btn-line" style={{ flex: 1 }} onClick={handleShare}>
+            {shared ? <Check width={18} height={18} /> : <Share2 width={18} height={18} />}
+            {shared ? 'Link copied!' : 'Share my score'}
+          </button>
+          <button type="button" className="btn btn-line" style={{ flex: 1 }} onClick={() => window.print()}>
+            <Download width={18} height={18} /> Download report
+          </button>
+        </div>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-accent" style={{ flex: 1 }} onClick={onRestart}>
-          Start New Interview
-        </button>
-        <Link href="/dashboard" className="btn btn-line" style={{ flex: 1 }}>
-          Back to Dashboard
-        </Link>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-accent" style={{ flex: 1 }} onClick={onRestart}>
+            Start New Interview
+          </button>
+          <Link href="/dashboard" className="btn btn-line" style={{ flex: 1 }}>
+            Back to Dashboard
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -112,6 +112,45 @@ export type Database = {
         Update: { key?: string; window_start?: string; count?: number };
         Relationships: [];
       };
+      payments: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          provider: string;
+          provider_ref: string | null;
+          event_id: string | null;
+          amount: number | null;
+          currency: string | null;
+          plan: string | null;
+          status: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          provider: string;
+          provider_ref?: string | null;
+          event_id?: string | null;
+          amount?: number | null;
+          currency?: string | null;
+          plan?: string | null;
+          status?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          provider?: string;
+          provider_ref?: string | null;
+          event_id?: string | null;
+          amount?: number | null;
+          currency?: string | null;
+          plan?: string | null;
+          status?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       sessions: {
         Row: SessionRow;
         Insert: {

@@ -135,6 +135,29 @@ create index if not exists sessions_user_id_created_at_idx
   on public.sessions (user_id, created_at desc);
 
 -- ---------------------------------------------------------------------------
+-- payments: audit trail for upgrades (Task 6). unique(provider, event_id)
+-- makes webhook/verify processing idempotent. Writes via service role only.
+-- ---------------------------------------------------------------------------
+create table if not exists public.payments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users (id) on delete cascade,
+  provider text not null check (provider in ('stripe', 'razorpay')),
+  provider_ref text,
+  event_id text,
+  amount integer,
+  currency text,
+  plan text,
+  status text,
+  created_at timestamptz not null default now(),
+  unique (provider, event_id)
+);
+alter table public.payments enable row level security;
+drop policy if exists "payments_select_own" on public.payments;
+create policy "payments_select_own"
+  on public.payments for select
+  using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
 -- Row Level Security
 -- Users may READ their own profile but NOT write it (plan/usage are mutated
 -- only by the service role on the server). Users may read + insert their own

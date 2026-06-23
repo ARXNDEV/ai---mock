@@ -34,9 +34,31 @@ export async function POST(request: Request) {
     const userId = session.metadata?.userId ?? session.client_reference_id ?? null;
     const planRaw = session.metadata?.plan;
     const plan: PlanKey = isPlanKey(planRaw) ? planRaw : 'pro_monthly';
+    const admin = createAdminClient();
+
+    // Idempotency gate: record the event; if it already exists, stop here.
+    const { data: inserted, error: payErr } = await admin
+      .from('payments')
+      .upsert(
+        {
+          user_id: userId,
+          provider: 'stripe',
+          event_id: event.id,
+          provider_ref: session.id,
+          amount: session.amount_total ?? null,
+          currency: session.currency ?? null,
+          plan,
+          status: 'completed',
+        },
+        { onConflict: 'provider,event_id', ignoreDuplicates: true },
+      )
+      .select('id');
+    if (payErr) console.error('[stripe webhook] payment record failed', payErr);
+    if (!inserted || inserted.length === 0) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     if (userId) {
-      const admin = createAdminClient();
-      // Time-boxed pass: grant Pro until now + (1 month | 1 year).
       const { error } = await admin
         .from('profiles')
         .update({ plan: 'pro', pro_until: proUntilFor(plan) })

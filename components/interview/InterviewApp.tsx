@@ -12,8 +12,14 @@ import SetupScreen from '@/components/SetupScreen';
 import InterviewScreen from '@/components/InterviewScreen';
 import SummaryScreen from '@/components/SummaryScreen';
 import { UpgradeGate } from '@/components/interview/UpgradeGate';
+import { IntroScreen } from '@/components/interview/IntroScreen';
 
-type Phase = 'setup' | 'interview' | 'summary';
+type Phase = 'setup' | 'intro' | 'interview' | 'summary';
+
+// The interview always opens with a fixed, human warm-up (counts as Q1). The
+// AI's first generated question then adapts to the candidate's background.
+const WARMUP_QUESTION =
+  "To start, tell me a bit about yourself — your background, and what you're looking for in your next role.";
 
 function TopBar() {
   return (
@@ -50,11 +56,13 @@ export default function InterviewApp({
   remaining,
   initialRole,
   initialDifficulty,
+  userName,
 }: {
   isPro: boolean;
   remaining: number | null;
   initialRole: Role;
   initialDifficulty: Difficulty;
+  userName: string;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('setup');
@@ -121,19 +129,13 @@ export default function InterviewApp({
         return;
       }
       if (!isPro) setCredits(credit.remaining);
-      const q = await fetchNextQuestion({
-        role: cfg.role,
-        difficulty: cfg.difficulty,
-        jd: cfg.jd,
-        previousQuestions: [],
-        focus: cfg.focus,
-        resume: cfg.resume,
-      });
+      // Open with the fixed warm-up (no AI call needed → instant start). The
+      // first AI question is fetched after the warm-up answer, so it adapts.
       setConfig(cfg);
-      setAskedQuestions([q]);
-      setCurrentQuestion(q);
+      setAskedQuestions([WARMUP_QUESTION]);
+      setCurrentQuestion(WARMUP_QUESTION);
       setAnswers([]);
-      setPhase('interview');
+      setPhase('intro');
     } catch (e) {
       setStartError(e instanceof Error ? e.message : 'Failed to start the interview.');
     } finally {
@@ -239,6 +241,14 @@ export default function InterviewApp({
           initialRole={initialRole}
           initialDifficulty={initialDifficulty}
         />
+      </Shell>
+    );
+  }
+
+  if (phase === 'intro' && config) {
+    return (
+      <Shell>
+        <IntroScreen config={config} userName={userName} onBegin={() => setPhase('interview')} />
       </Shell>
     );
   }

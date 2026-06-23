@@ -18,9 +18,9 @@ export default async function InterviewPage({
   if (!data) return null;
 
   const isPro = data.profile.plan === 'pro';
-  const remaining = isPro
-    ? null
-    : Math.max(0, FREE_MONTHLY_INTERVIEWS - data.profile.interviews_used_this_month);
+  // Free allowance includes any referral bonus (matches the consume route).
+  const cap = FREE_MONTHLY_INTERVIEWS + (data.profile.bonus_interviews ?? 0);
+  const remaining = isPro ? null : Math.max(0, cap - data.profile.interviews_used_this_month);
 
   if (!isPro && remaining === 0) {
     return (
@@ -35,7 +35,15 @@ export default async function InterviewPage({
     ? (searchParams.difficulty as Difficulty)
     : 'mid';
 
+  const userName = data.email ? data.email.split('@')[0] : 'there';
+
   return (
-    <InterviewApp isPro={isPro} remaining={remaining} initialRole={role} initialDifficulty={difficulty} />
+    <InterviewApp
+      isPro={isPro}
+      remaining={remaining}
+      initialRole={role}
+      initialDifficulty={difficulty}
+      userName={userName}
+    />
   );
 }

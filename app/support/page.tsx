@@ -2,13 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/logo';
 import { SupportChat } from '@/components/support/SupportChat';
+import { getUser } from '@/lib/auth';
 
 export const metadata: Metadata = {
   title: 'Contact Support — Intervue.ai',
   description: 'Questions, bugs, or billing — chat with Intervue.ai support and we’ll reply by email.',
 };
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  // Logged-out visitors must clear a Turnstile captcha; signed-in users don't.
+  const user = await getUser();
   return (
     <main
       style={{
@@ -31,7 +34,7 @@ export default function SupportPage() {
         </a>
         .
       </p>
-      <SupportChat />
+      <SupportChat authed={!!user} />
       <p style={{ marginTop: 22, fontSize: 13, color: 'var(--ink-mute)' }}>
         <Link href="/" style={{ color: 'var(--accent)' }}>
           ← Back to home

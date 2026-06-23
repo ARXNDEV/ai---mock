@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Script from 'next/script';
 import { Send, Loader2, LifeBuoy } from 'lucide-react';
 
 interface Msg {
@@ -8,19 +9,77 @@ interface Msg {
   text: string;
 }
 
+// Minimal typing for the Cloudflare Turnstile global.
+interface TurnstileApi {
+  render: (
+    el: HTMLElement,
+    opts: {
+      sitekey: string;
+      callback?: (token: string) => void;
+      'expired-callback'?: () => void;
+      'error-callback'?: () => void;
+      theme?: 'auto' | 'light' | 'dark';
+    },
+  ) => string;
+  reset: (widgetId?: string) => void;
+}
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
 const GREETING =
   "Hi! 👋 I'm Intervue Support. Tell me what's going on — a question, a bug, billing, anything. Drop your email and message and I'll open a ticket; we reply by email.";
 
-export function SupportChat() {
+export function SupportChat({ authed = false }: { authed?: boolean }) {
   const [thread, setThread] = useState<Msg[]>([{ role: 'support', text: GREETING }]);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [token, setToken] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  // Logged-out visitors must solve a Turnstile captcha to submit a ticket.
+  const needsCaptcha = !authed && !!SITE_KEY;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [thread]);
+
+  // Render the Turnstile widget once its script is loaded (poll until ready).
+  useEffect(() => {
+    if (!needsCaptcha) return;
+    let cancelled = false;
+    const tryRender = () => {
+      if (cancelled || widgetIdRef.current) return;
+      const ts = window.turnstile;
+      if (ts && widgetRef.current && SITE_KEY) {
+        widgetIdRef.current = ts.render(widgetRef.current, {
+          sitekey: SITE_KEY,
+          callback: (t) => setToken(t),
+          'expired-callback': () => setToken(''),
+          'error-callback': () => setToken(''),
+          theme: 'auto',
+        });
+      } else {
+        setTimeout(tryRender, 300);
+      }
+    };
+    tryRender();
+    return () => {
+      cancelled = true;
+    };
+  }, [needsCaptcha]);
+
+  function resetCaptcha() {
+    setToken('');
+    if (widgetIdRef.current) window.turnstile?.reset(widgetIdRef.current);
+  }
 
   async function send() {
     const e = email.trim();
@@ -33,6 +92,10 @@ export function SupportChat() {
       setThread((t) => [...t, { role: 'support', text: 'Could you add a little more detail about the issue?' }]);
       return;
     }
+    if (needsCaptcha && !token) {
+      setThread((t) => [...t, { role: 'support', text: 'Please complete the “I’m human” check just below, then send. 🤖' }]);
+      return;
+    }
     setThread((t) => [...t, { role: 'user', text: m }]);
     setMessage('');
     setSending(true);
@@ -40,9 +103,11 @@ export function SupportChat() {
       const res = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: e, message: m }),
+        body: JSON.stringify({ email: e, message: m, turnstileToken: token || undefined }),
       });
       const data = await res.json().catch(() => ({}));
+      // Turnstile tokens are single-use — reset the widget for the next message.
+      resetCaptcha();
       if (res.ok && data.ticketId) {
         setThread((t) => [
           ...t,
@@ -115,6 +180,12 @@ export function SupportChat() {
       </div>
 
       <div style={{ padding: '16px 22px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {needsCaptcha && (
+          <>
+            <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
+            <div ref={widgetRef} style={{ minHeight: 65 }} />
+          </>
+        )}
         <input
           type="email"
           className="field"

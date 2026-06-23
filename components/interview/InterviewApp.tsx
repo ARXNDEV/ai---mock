@@ -13,8 +13,9 @@ import InterviewScreen from '@/components/InterviewScreen';
 import SummaryScreen from '@/components/SummaryScreen';
 import { UpgradeGate } from '@/components/interview/UpgradeGate';
 import { IntroScreen } from '@/components/interview/IntroScreen';
+import { ClosingScreen } from '@/components/interview/ClosingScreen';
 
-type Phase = 'setup' | 'intro' | 'interview' | 'summary';
+type Phase = 'setup' | 'intro' | 'interview' | 'closing' | 'summary';
 
 // The interview always opens with a fixed, human warm-up (counts as Q1). The
 // AI's first generated question then adapts to the candidate's background.
@@ -182,8 +183,12 @@ export default function InterviewApp({
     const updated = [...answers, record];
     setAnswers(updated);
     if (!config || updated.length >= config.questionCount) {
-      if (config) await persistSession(updated, config);
-      setPhase('summary');
+      if (config) {
+        void persistSession(updated, config); // save in the background while the closing plays
+        setPhase('closing');
+      } else {
+        setPhase('summary');
+      }
       return;
     }
 
@@ -253,6 +258,14 @@ export default function InterviewApp({
     );
   }
 
+  if (phase === 'closing') {
+    return (
+      <Shell>
+        <ClosingScreen userName={userName} onDone={() => setPhase('summary')} />
+      </Shell>
+    );
+  }
+
   if (phase === 'summary') {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -274,11 +287,19 @@ export default function InterviewApp({
   // interview phase
   if (advancing) {
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-        <p className="mono" style={{ color: 'var(--ink-mute)', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 12 }}>
-          Preparing next question…
-        </p>
-      </div>
+      <Shell>
+        <div style={{ textAlign: 'center' }}>
+          <div className="ai-avatar live" style={{ margin: '0 auto 18px' }}>
+            <svg className="ico" viewBox="0 0 24 24">
+              <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" />
+            </svg>
+          </div>
+          <p className="mono" style={{ color: 'var(--ink-mute)', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: 12 }}>
+            Aria is preparing your next question…
+          </p>
+        </div>
+      </Shell>
     );
   }
   if (advanceError) {

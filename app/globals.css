@@ -2211,6 +2211,50 @@ textarea:focus-visible {
   }
 }
 
+/* ---- code editor: Prism tokens, brand-tuned for the light card surface ---- */
+.code-ta:focus {
+  outline: none;
+}
+.code-ta::placeholder {
+  color: var(--ink-mute);
+}
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--ink-mute);
+  font-style: italic;
+}
+.token.punctuation,
+.token.operator {
+  color: var(--ink-soft);
+}
+.token.keyword,
+.token.boolean,
+.token.atrule,
+.token.important,
+.token.tag {
+  color: var(--accent);
+}
+.token.string,
+.token.char,
+.token.attr-value,
+.token.regex {
+  color: var(--green);
+}
+.token.number,
+.token.function,
+.token.class-name,
+.token.constant,
+.token.symbol {
+  color: var(--ochre);
+}
+.token.property,
+.token.attr-name,
+.token.variable {
+  color: var(--ink);
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

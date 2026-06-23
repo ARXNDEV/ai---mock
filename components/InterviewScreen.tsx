@@ -288,7 +288,7 @@ export default function InterviewScreen({
             </div>
             <div style={{ flex: 1 }}>
               <div className="ai-name">Aria · AI Interviewer</div>
-              <div className="ai-status">
+              <div className="ai-status" role="status" aria-live="polite">
                 <span className="blip" /> {statusText}
               </div>
             </div>
@@ -340,6 +340,8 @@ export default function InterviewScreen({
                     type="button"
                     onClick={() => switchMode('voice')}
                     title="Voice / text answer"
+                    aria-pressed={answerMode === 'voice'}
+                    aria-label="Answer by voice"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 11, border: 'none', cursor: 'pointer', background: answerMode === 'voice' ? 'var(--ink)' : 'transparent', color: answerMode === 'voice' ? 'var(--card)' : 'var(--ink-soft)' }}
                   >
                     <Mic width={13} height={13} /> Voice
@@ -348,6 +350,8 @@ export default function InterviewScreen({
                     type="button"
                     onClick={() => switchMode('code')}
                     title="Code answer"
+                    aria-pressed={answerMode === 'code'}
+                    aria-label="Answer with code"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 11, border: 'none', cursor: 'pointer', background: answerMode === 'code' ? 'var(--ink)' : 'transparent', color: answerMode === 'code' ? 'var(--card)' : 'var(--ink-soft)' }}
                   >
                     <Code2 width={13} height={13} /> Code
@@ -362,6 +366,7 @@ export default function InterviewScreen({
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   className="mono"
+                  aria-label="Code language"
                   style={{ marginBottom: 10, fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line-strong)', background: 'var(--card)', color: 'var(--ink)' }}
                 >
                   {CODE_LANGUAGES.map((l) => (
@@ -375,6 +380,7 @@ export default function InterviewScreen({
                   onChange={setTranscript}
                   placeholder={`Write your ${language} solution…`}
                   readOnly={phase === 'evaluating' || phase === 'feedback'}
+                  language={language}
                 />
               </div>
             ) : (
@@ -587,7 +593,8 @@ export default function InterviewScreen({
           <div className="rec-zone">
             <button
               className={recording ? 'rec-btn active' : 'rec-btn'}
-              aria-label="Record"
+              aria-label={recording ? 'Stop recording' : 'Start recording'}
+              aria-pressed={recording}
               onClick={toggleRecording}
               disabled={phase === 'transcribing' || phase === 'evaluating'}
             >

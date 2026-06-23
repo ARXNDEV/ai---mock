@@ -28,6 +28,9 @@ alter table public.profiles
   add column if not exists referred_by uuid references auth.users (id);
 create unique index if not exists profiles_referral_code_key
   on public.profiles (referral_code);
+-- Anti-sybil: referrer's bonus only lands once the referee qualifies (Task 5).
+alter table public.profiles
+  add column if not exists referral_qualified boolean not null default false;
 
 -- Time-boxed Pro (Task 2): Pro is "active" when plan='pro' AND
 -- (pro_until is null OR pro_until > now()). pro_until null = legacy/unbounded.
@@ -230,6 +233,61 @@ begin
     returning resumes_used_this_month into new_used;
 
   return jsonb_build_object('ok', true, 'remaining', greatest(0, p_base - new_used));
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Referral claim + qualification (Task 5). Atomic, self-referral-safe, capped.
+-- claim_referral binds referee→referrer and gives the referee a (capped)
+-- welcome bonus; the REFERRER is credited only when the referee qualifies
+-- (qualify_referral, called when they save their first session).
+-- ---------------------------------------------------------------------------
+create or replace function public.claim_referral(p_user uuid, p_code text, p_bonus int, p_cap int)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  me public.profiles%rowtype;
+  ref public.profiles%rowtype;
+begin
+  select * into me from public.profiles where id = p_user for update;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'no-profile'); end if;
+  if me.referred_by is not null then return jsonb_build_object('ok', false, 'reason', 'already-referred'); end if;
+
+  select * into ref from public.profiles where referral_code = p_code;
+  if not found or ref.id = p_user then return jsonb_build_object('ok', false, 'reason', 'invalid-code'); end if;
+
+  update public.profiles
+    set referred_by = ref.id,
+        bonus_interviews = least(p_cap, coalesce(bonus_interviews, 0) + p_bonus)
+    where id = p_user;
+
+  return jsonb_build_object('ok', true, 'bonus', p_bonus);
+end;
+$$;
+
+create or replace function public.qualify_referral(p_user uuid, p_bonus int, p_cap int)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  me public.profiles%rowtype;
+begin
+  select * into me from public.profiles where id = p_user for update;
+  if not found or me.referred_by is null or me.referral_qualified then
+    return jsonb_build_object('ok', false);
+  end if;
+
+  update public.profiles set referral_qualified = true where id = p_user;
+  update public.profiles
+    set bonus_interviews = least(p_cap, coalesce(bonus_interviews, 0) + p_bonus)
+    where id = me.referred_by;
+
+  return jsonb_build_object('ok', true);
 end;
 $$;
 

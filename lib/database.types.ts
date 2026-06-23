@@ -31,6 +31,7 @@ export type ProfileRow = {
   bonus_interviews: number;
   referral_code: string | null;
   referred_by: string | null;
+  referral_qualified: boolean;
   pro_until: string | null;
   reset_date: string;
   created_at: string;
@@ -67,6 +68,7 @@ export type Database = {
           bonus_interviews?: number;
           referral_code?: string | null;
           referred_by?: string | null;
+          referral_qualified?: boolean;
           pro_until?: string | null;
           reset_date?: string;
           created_at?: string;
@@ -79,6 +81,7 @@ export type Database = {
           bonus_interviews?: number;
           referral_code?: string | null;
           referred_by?: string | null;
+          referral_qualified?: boolean;
           pro_until?: string | null;
           reset_date?: string;
           created_at?: string;
@@ -149,6 +152,14 @@ export type Database = {
       consume_resume_credit: {
         Args: { p_user: string; p_base: number };
         Returns: { ok: boolean; remaining: number };
+      };
+      claim_referral: {
+        Args: { p_user: string; p_code: string; p_bonus: number; p_cap: number };
+        Returns: { ok: boolean; bonus?: number; reason?: string };
+      };
+      qualify_referral: {
+        Args: { p_user: string; p_bonus: number; p_cap: number };
+        Returns: { ok: boolean };
       };
     };
     Enums: { [_ in never]: never };

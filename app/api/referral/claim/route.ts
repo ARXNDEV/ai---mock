@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getUser } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { REFERRAL_BONUS } from '@/lib/referral';
+import { REFERRAL_BONUS, MAX_BONUS_INTERVIEWS } from '@/lib/referral';
 
 export const runtime = 'nodejs';
 
 /**
- * Claim a referral code for the current user. Idempotent: only works once
- * (while the user has no `referred_by`), can't self-refer, and rewards BOTH
- * sides with bonus interviews. Always returns 200 with an `ok` flag so the
- * client can fire-and-forget.
+ * Claim a referral code. The whole claim runs in one atomic RPC: rejects a
+ * second claim / self-referral / unknown code, binds referee→referrer, and
+ * gives the referee a capped welcome bonus. The REFERRER's bonus is deferred
+ * until the referee qualifies (saves their first session) — anti-sybil.
+ * Always returns 200 + an `ok` flag for fire-and-forget on the client.
  */
 export async function POST(request: Request) {
   try {
@@ -21,34 +22,17 @@ export async function POST(request: Request) {
     if (!clean) return NextResponse.json({ ok: false, reason: 'no-code' });
 
     const admin = createAdminClient();
-
-    const { data: me } = await admin
-      .from('profiles')
-      .select('id, referred_by, bonus_interviews')
-      .eq('id', user.id)
-      .single();
-    if (!me) return NextResponse.json({ ok: false, reason: 'no-profile' });
-    if (me.referred_by) return NextResponse.json({ ok: false, reason: 'already-referred' });
-
-    const { data: referrer } = await admin
-      .from('profiles')
-      .select('id, bonus_interviews')
-      .eq('referral_code', clean)
-      .single();
-    if (!referrer || referrer.id === user.id) {
-      return NextResponse.json({ ok: false, reason: 'invalid-code' });
+    const { data, error } = await admin.rpc('claim_referral', {
+      p_user: user.id,
+      p_code: clean,
+      p_bonus: REFERRAL_BONUS,
+      p_cap: MAX_BONUS_INTERVIEWS,
+    });
+    if (error) {
+      console.error('[referral/claim] rpc error', error);
+      return NextResponse.json({ ok: false, reason: 'error' });
     }
-
-    await admin
-      .from('profiles')
-      .update({ referred_by: referrer.id, bonus_interviews: (me.bonus_interviews ?? 0) + REFERRAL_BONUS })
-      .eq('id', user.id);
-    await admin
-      .from('profiles')
-      .update({ bonus_interviews: (referrer.bonus_interviews ?? 0) + REFERRAL_BONUS })
-      .eq('id', referrer.id);
-
-    return NextResponse.json({ ok: true, bonus: REFERRAL_BONUS });
+    return NextResponse.json(data ?? { ok: false, reason: 'error' });
   } catch (err) {
     console.error('[referral/claim] error', err);
     return NextResponse.json({ ok: false, reason: 'error' });

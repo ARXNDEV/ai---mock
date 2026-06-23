@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getGroq, GROQ_LLM_MODEL, INTERVIEWER_SYSTEM_PROMPT } from '@/lib/groq';
 import { buildEvaluationPrompt, buildCodeEvaluationPrompt } from '@/lib/prompts';
-import { extractJson } from '@/lib/json';
+import { completeJson } from '@/lib/llm';
 import { getUser } from '@/lib/auth';
 import { spendInterviewCall } from '@/lib/entitlements';
 import { rateLimit, AI_LIMITS } from '@/lib/ratelimit';
 import type { Role, Feedback } from '@/lib/types';
 
 export const runtime = 'nodejs';
+
+/** Neutral feedback used when the model's JSON can't be parsed — never 500. */
+const NEUTRAL_FEEDBACK: Feedback = {
+  score: 6,
+  good: 'You engaged with the question and gave a response.',
+  missing: 'We couldn’t fully analyze this answer automatically.',
+  suggestion: 'Try elaborating with a concrete example and the trade-offs you weighed.',
+};
 
 interface Body {
   question: string;
@@ -54,18 +61,11 @@ export async function POST(request: Request) {
             transcript: body.transcript,
           });
 
-    const completion = await getGroq().chat.completions.create({
-      model: GROQ_LLM_MODEL,
-      max_tokens: 1024,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: INTERVIEWER_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-    });
-
-    const text = completion.choices[0]?.message?.content ?? '';
-    const parsed = extractJson<Partial<Feedback>>(text);
+    const parsed = await completeJson<Partial<Feedback>>(prompt, { maxTokens: 1024 });
+    if (!parsed) {
+      console.error('[evaluate] model JSON unusable; returning neutral feedback');
+      return NextResponse.json(NEUTRAL_FEEDBACK);
+    }
 
     // Normalize: clamp the score to 1-10 and guarantee string fields.
     const score = Math.max(1, Math.min(10, Math.round(Number(parsed.score) || 0)));

@@ -142,6 +142,14 @@ export type Database = {
         Args: { p_key: string; p_max: number; p_window_sec: number };
         Returns: { allowed: boolean; remaining: number; retryAfter: number };
       };
+      consume_interview_credit: {
+        Args: { p_user: string; p_base: number };
+        Returns: { ok: boolean; remaining: number };
+      };
+      consume_resume_credit: {
+        Args: { p_user: string; p_base: number };
+        Returns: { ok: boolean; remaining: number };
+      };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

@@ -65,37 +65,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, plan: 'pro', remaining: null, token });
   }
 
-  // Free plan: reserve a monthly credit (read-modify-write — made atomic in Task 4).
-  const cap = FREE_MONTHLY_INTERVIEWS + (profile.bonus_interviews ?? 0);
-  let used = profile.interviews_used_this_month;
-  let resetDate = profile.reset_date;
-  if (new Date(resetDate).getTime() < Date.now()) {
-    used = 0;
-    resetDate = oneMonthFromNow();
+  // Free plan: reserve a monthly credit atomically (cap + reset handled in SQL).
+  const { data: result, error: rpcErr } = await admin.rpc('consume_interview_credit', {
+    p_user: user.id,
+    p_base: FREE_MONTHLY_INTERVIEWS,
+  });
+  if (rpcErr) {
+    console.error('[interview/consume] rpc failed', rpcErr);
+    return NextResponse.json({ error: 'Failed to start interview.' }, { status: 500 });
   }
-
-  if (used >= cap) {
-    if (resetDate !== profile.reset_date) {
-      await admin.from('profiles').update({ interviews_used_this_month: used, reset_date: resetDate }).eq('id', user.id);
-    }
+  const res = (result ?? { ok: false, remaining: 0 }) as { ok: boolean; remaining: number };
+  if (!res.ok) {
     return NextResponse.json(
       { ok: false, plan: 'free', remaining: 0, error: 'Free interview limit reached.' },
       { status: 403 },
     );
   }
 
-  used += 1;
-  const { error } = await admin
-    .from('profiles')
-    .update({ interviews_used_this_month: used, reset_date: resetDate })
-    .eq('id', user.id);
-  if (error) {
-    console.error('[interview/consume] update failed', error);
-    return NextResponse.json({ error: 'Failed to start interview.' }, { status: 500 });
-  }
-
   const token = await issueToken(admin, user.id, qCount * CALLS_PER_QUESTION);
   if (!token) return NextResponse.json({ error: 'Failed to start interview.' }, { status: 500 });
 
-  return NextResponse.json({ ok: true, plan: 'free', remaining: Math.max(0, cap - used), token });
+  return NextResponse.json({ ok: true, plan: 'free', remaining: res.remaining, token });
 }

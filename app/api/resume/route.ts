@@ -24,21 +24,35 @@ export async function POST(request: Request) {
     const limited = await rateLimit(request, userId, { name: 'resume', ...AI_LIMITS.resume });
     if (limited) return limited;
     const isPro = isProActive(profile);
-    const used = profile.resumes_used_this_month ?? 0;
-
-    if (!isPro && used >= FREE_MONTHLY_RESUMES) {
-      return NextResponse.json(
-        {
-          error: `You've used all ${FREE_MONTHLY_RESUMES} free résumé analyses this month. Upgrade to Pro for unlimited.`,
-          remaining: 0,
-        },
-        { status: 403 },
-      );
-    }
 
     const body = (await request.json()) as Body;
     if (!body.resume || body.resume.trim().length < 40) {
       return NextResponse.json({ error: 'Please provide your full résumé text (at least a few lines).' }, { status: 400 });
+    }
+
+    // Reserve a résumé credit atomically BEFORE the costly model call.
+    let remaining: number | null = null;
+    if (!isPro) {
+      const admin = createAdminClient();
+      const { data: result, error: rpcErr } = await admin.rpc('consume_resume_credit', {
+        p_user: userId,
+        p_base: FREE_MONTHLY_RESUMES,
+      });
+      if (rpcErr) {
+        console.error('[resume] rpc failed', rpcErr);
+        return NextResponse.json({ error: 'Failed to analyze résumé.' }, { status: 500 });
+      }
+      const res = (result ?? { ok: false, remaining: 0 }) as { ok: boolean; remaining: number };
+      if (!res.ok) {
+        return NextResponse.json(
+          {
+            error: `You've used all ${FREE_MONTHLY_RESUMES} free résumé analyses this month. Upgrade to Pro for unlimited.`,
+            remaining: 0,
+          },
+          { status: 403 },
+        );
+      }
+      remaining = res.remaining;
     }
 
     const prompt = buildResumePrompt({ resume: body.resume, jd: body.jd ?? '' });
@@ -56,19 +70,6 @@ export async function POST(request: Request) {
     const analysis = extractJson<ResumeAnalysis>(text);
     if (typeof analysis.matchScore !== 'number') {
       throw new Error('Model did not return a valid analysis.');
-    }
-
-    // Count this analysis for free users (best-effort — tolerate the column
-    // not existing yet so the feature works before the migration is run).
-    let remaining: number | null = isPro ? null : Math.max(0, FREE_MONTHLY_RESUMES - used);
-    if (!isPro) {
-      const admin = createAdminClient();
-      const { error: incErr } = await admin
-        .from('profiles')
-        .update({ resumes_used_this_month: used + 1 })
-        .eq('id', userId);
-      if (incErr) console.error('[resume] usage increment failed', incErr);
-      else remaining = Math.max(0, FREE_MONTHLY_RESUMES - (used + 1));
     }
 
     return NextResponse.json({ analysis, remaining });

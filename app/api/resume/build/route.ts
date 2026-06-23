@@ -24,21 +24,35 @@ export async function POST(request: Request) {
     const limited = await rateLimit(request, userId, { name: 'resume-build', ...AI_LIMITS['resume-build'] });
     if (limited) return limited;
     const isPro = isProActive(profile);
-    const used = profile.resumes_used_this_month ?? 0;
-
-    if (!isPro && used >= FREE_MONTHLY_RESUMES) {
-      return NextResponse.json(
-        {
-          error: `You've used all ${FREE_MONTHLY_RESUMES} free résumé credits this month. Upgrade to Pro for unlimited.`,
-          remaining: 0,
-        },
-        { status: 403 },
-      );
-    }
 
     const body = (await request.json()) as Body;
     if (!body.resume || body.resume.trim().length < 40) {
       return NextResponse.json({ error: 'Please provide your full résumé text (at least a few lines).' }, { status: 400 });
+    }
+
+    // Reserve a résumé credit atomically BEFORE the costly model call.
+    let remaining: number | null = null;
+    if (!isPro) {
+      const admin = createAdminClient();
+      const { data: result, error: rpcErr } = await admin.rpc('consume_resume_credit', {
+        p_user: userId,
+        p_base: FREE_MONTHLY_RESUMES,
+      });
+      if (rpcErr) {
+        console.error('[resume/build] rpc failed', rpcErr);
+        return NextResponse.json({ error: 'Failed to build résumé.' }, { status: 500 });
+      }
+      const res = (result ?? { ok: false, remaining: 0 }) as { ok: boolean; remaining: number };
+      if (!res.ok) {
+        return NextResponse.json(
+          {
+            error: `You've used all ${FREE_MONTHLY_RESUMES} free résumé credits this month. Upgrade to Pro for unlimited.`,
+            remaining: 0,
+          },
+          { status: 403 },
+        );
+      }
+      remaining = res.remaining;
     }
 
     const prompt = buildTailoredResumePrompt({ resume: body.resume, jd: body.jd ?? '' });
@@ -56,17 +70,6 @@ export async function POST(request: Request) {
     const resume = extractJson<TailoredResume>(text);
     if (!resume.summary || !Array.isArray(resume.experience)) {
       throw new Error('Model did not return a valid résumé.');
-    }
-
-    let remaining: number | null = isPro ? null : Math.max(0, FREE_MONTHLY_RESUMES - used);
-    if (!isPro) {
-      const admin = createAdminClient();
-      const { error: incErr } = await admin
-        .from('profiles')
-        .update({ resumes_used_this_month: used + 1 })
-        .eq('id', userId);
-      if (incErr) console.error('[resume/build] usage increment failed', incErr);
-      else remaining = Math.max(0, FREE_MONTHLY_RESUMES - (used + 1));
     }
 
     return NextResponse.json({ resume, remaining });

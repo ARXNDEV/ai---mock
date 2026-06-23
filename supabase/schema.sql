@@ -156,6 +156,84 @@ create policy "sessions_insert_own"
   with check (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
+-- Atomic credit consumption (Task 4) — cap check + increment + monthly reset in
+-- a single locked statement, so concurrent requests can't exceed the cap.
+-- p_base is the plan's base allowance; the interview cap adds referral bonus.
+-- Returns { ok, remaining }.
+-- ---------------------------------------------------------------------------
+create or replace function public.consume_interview_credit(p_user uuid, p_base int)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  prof public.profiles%rowtype;
+  cap int;
+  new_used int;
+begin
+  select * into prof from public.profiles where id = p_user for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'remaining', 0);
+  end if;
+
+  if prof.reset_date < now() then
+    update public.profiles
+      set interviews_used_this_month = 0, resumes_used_this_month = 0, reset_date = now() + interval '1 month'
+      where id = p_user;
+    prof.interviews_used_this_month := 0;
+  end if;
+
+  cap := p_base + coalesce(prof.bonus_interviews, 0);
+  if prof.interviews_used_this_month >= cap then
+    return jsonb_build_object('ok', false, 'remaining', 0);
+  end if;
+
+  update public.profiles
+    set interviews_used_this_month = interviews_used_this_month + 1
+    where id = p_user
+    returning interviews_used_this_month into new_used;
+
+  return jsonb_build_object('ok', true, 'remaining', greatest(0, cap - new_used));
+end;
+$$;
+
+create or replace function public.consume_resume_credit(p_user uuid, p_base int)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  prof public.profiles%rowtype;
+  new_used int;
+begin
+  select * into prof from public.profiles where id = p_user for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'remaining', 0);
+  end if;
+
+  if prof.reset_date < now() then
+    update public.profiles
+      set interviews_used_this_month = 0, resumes_used_this_month = 0, reset_date = now() + interval '1 month'
+      where id = p_user;
+    prof.resumes_used_this_month := 0;
+  end if;
+
+  if prof.resumes_used_this_month >= p_base then
+    return jsonb_build_object('ok', false, 'remaining', 0);
+  end if;
+
+  update public.profiles
+    set resumes_used_this_month = resumes_used_this_month + 1
+    where id = p_user
+    returning resumes_used_this_month into new_used;
+
+  return jsonb_build_object('ok', true, 'remaining', greatest(0, p_base - new_used));
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Auto-create a profile when a new auth user signs up.
 -- ---------------------------------------------------------------------------
 create or replace function public.handle_new_user()

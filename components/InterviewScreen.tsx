@@ -143,6 +143,11 @@ export default function InterviewScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recorder.audioBlob]);
 
+  // Surface mic / permission errors (otherwise tapping record silently fails).
+  useEffect(() => {
+    if (recorder.error) setError(recorder.error);
+  }, [recorder.error]);
+
   async function handleTranscribe(blob: Blob) {
     setPhase('transcribing');
     setError(null);
